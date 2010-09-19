@@ -69,7 +69,7 @@ int init_module(void)
 void cleanup_module(void)
 {
 	kthread_stop(monitor);
-	printk(KERN_INFO "Unload dyntune\n");
+	printk(KERN_INFO "Unload ioswitch\n");
 }
 
 
