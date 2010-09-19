@@ -1,0 +1,53 @@
+--- linux-2.6.33.5.orig/block/elevator.c	2010-09-10 12:55:45.523770557 +0800
++++ linux-2.6.33.5/block/elevator.c	2010-09-16 10:06:24.964525786 +0800
+@@ -1049,6 +1049,35 @@
+ 	return 0;
+ }
+ 
++int elv_switch(struct request_queue *q, const char *name)
++{
++	char elevator_name[ELV_NAME_MAX];
++	struct elevator_type *e;
++
++	if (!q->elevator)
++		return 0;
++
++	strlcpy(elevator_name, name, sizeof(elevator_name));
++	e = elevator_get(strstrip(elevator_name));
++	if (!e) {
++		printk(KERN_ERR "elevator: type %s not found\n", elevator_name);
++		return -EINVAL;
++	}
++
++	if (!strcmp(elevator_name, q->elevator->elevator_type->elevator_name)) {
++		elevator_put(e);
++		return 0;
++	}
++
++	if (!elevator_switch(q, e)) {
++		printk(KERN_ERR "elevator: switch to %s failed\n", elevator_name);
++		return 0;
++	}
++
++	return 1;
++}
++EXPORT_SYMBOL(elv_switch);
++
+ ssize_t elv_iosched_store(struct request_queue *q, const char *name,
+ 			  size_t count)
+ {
+--- linux-2.6.33.5.orig/include/linux/elevator.h	2010-09-10 12:55:45.033773643 +0800
++++ linux-2.6.33.5/include/linux/elevator.h	2010-09-16 10:07:16.712953754 +0800
+@@ -128,6 +128,12 @@
+ extern ssize_t elv_iosched_show(struct request_queue *, char *);
+ extern ssize_t elv_iosched_store(struct request_queue *, const char *, size_t);
+ 
++/*
++ * io scheduler switching interface
++ */
++#define ELV_SWITCH
++extern int elv_switch(struct request_queue *, const char *);
++
+ extern int elevator_init(struct request_queue *, char *);
+ extern void elevator_exit(struct elevator_queue *);
+ extern int elv_rq_merge_ok(struct request *, struct bio *);
