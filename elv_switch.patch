@@ -1,6 +1,6 @@
 --- linux-2.6.33.5.orig/block/elevator.c	2010-09-10 12:55:45.523770557 +0800
 +++ linux-2.6.33.5/block/elevator.c	2010-09-16 10:06:24.964525786 +0800
-@@ -1049,6 +1049,33 @@
+@@ -1049,6 +1049,31 @@
  	return 0;
  }
  
@@ -11,15 +11,13 @@
 +	if (!q->elevator)
 +		return 0;
 +
++	if (!strcmp(name, q->elevator->elevator_type->elevator_name))
++		return 0;
++
 +	e = elevator_get(name);
 +	if (!e) {
 +		printk(KERN_ERR "elevator: type %s not found\n", name);
 +		return -EINVAL;
-+	}
-+
-+	if (!strcmp(name, q->elevator->elevator_type->elevator_name)) {
-+		elevator_put(e);
-+		return 0;
 +	}
 +
 +	if (!elevator_switch(q, e)) {
