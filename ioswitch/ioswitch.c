@@ -1,5 +1,5 @@
 /**
- * dyntune.c
+ * ioswitch.c
  */
 
 #include <linux/kernel.h>	/* Needed for KERN_INFO */
@@ -49,7 +49,7 @@ int threadfn(void *data)
 		}
 #endif
 		printk(KERN_INFO "sectors/read = %lu, sectors/write = %lu, ave = %lu\n", spr, spw, ave);
-		msleep(10000);
+		msleep_interruptible(10000);
 	}
 
 	return 0;
