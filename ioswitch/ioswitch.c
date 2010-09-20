@@ -59,9 +59,9 @@ int threadfn(void *data)
 				printk(KERN_INFO "elevator: switch to cfq\n");
 		}
 #endif
-		//printk(KERN_INFO "s/r = %lu, s/w = %lu, ave = %lu; "
+		/*printk(KERN_INFO "s/r = %lu, s/w = %lu, ave = %lu; "
 			"60s: s/r = %lu, s/w = %lu, ave = %lu\n",
-			spr, spw, ave, s_spr, s_spw, s_ave);
+			spr, spw, ave, s_spr, s_spw, s_ave);*/
 		msleep_interruptible(60000);
 	}
 
