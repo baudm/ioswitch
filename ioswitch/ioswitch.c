@@ -11,11 +11,9 @@
 #include <linux/kthread.h>	  /* kthread_run */
 #include <linux/delay.h>	/* msleep */
 
-
 #define DEV_PATH	"/dev/sda"
 #define DECISION_PT	0.5
 #define MAX_SAMPLES	5
-
 
 struct raw_stats {
 	unsigned long rreq; /* read requests */
@@ -24,13 +22,11 @@ struct raw_stats {
 	unsigned long long wsec; /* write sectors */
 };
 
-
 struct avg_stats {
 	unsigned long rreq_sz; /* read sectors/requests */
 	unsigned long wreq_sz; /* write sectors/requests */
 	unsigned long req_sz; /* avg sectors/requests */
 };
-
 
 static struct task_struct *monitor = NULL;
 /* circular buffer for stat samples */
@@ -38,8 +34,7 @@ static struct raw_stats samples[MAX_SAMPLES];
 static struct raw_stats *cur = NULL, *old = NULL;
 static short index = 0;
 
-
-void init_buffer(void)
+static void init_buffer(void)
 {
 	short i;
 
@@ -51,8 +46,7 @@ void init_buffer(void)
 	}
 }
 
-
-void read_stats(struct hd_struct *p)
+static void read_stats(struct hd_struct *p)
 {
 	cur = &samples[index];
 	cur->rreq = part_stat_read(p, ios[READ]);
@@ -68,8 +62,7 @@ void read_stats(struct hd_struct *p)
 	old = &samples[index];
 }
 
-
-void get_avg_stats(struct avg_stats *s, struct raw_stats *ref)
+static void get_avg_stats(struct avg_stats *s, struct raw_stats *ref)
 {
 	if (ref) {
 		if (cur->rreq != ref->rreq)
@@ -89,8 +82,7 @@ void get_avg_stats(struct avg_stats *s, struct raw_stats *ref)
 	s->req_sz = (s->rreq_sz + s->wreq_sz) / 2;
 }
 
-
-int threadfn(void *data)
+static int threadfn(void *data)
 {
 	struct block_device *bdev = lookup_bdev(DEV_PATH);
 	struct hd_struct *p = disk_get_part(bdev->bd_disk, 0);
@@ -125,27 +117,25 @@ int threadfn(void *data)
 	return 0;
 }
 
-
-int init_module(void)
+static int __init ioswitch_init(void)
 {
 	init_buffer();
 	monitor = kthread_run(threadfn, NULL, "monitor");
 	printk(KERN_INFO "ioswitch loaded\n");
-	/*
-	 * A non 0 return means init_module failed; module can't be loaded.
-	 */
+
 	return 0;
 }
 
-
-void cleanup_module(void)
+static void __exit ioswitch_exit(void)
 {
 	kthread_stop(monitor);
 	printk(KERN_INFO "ioswitch unloaded\n");
 }
 
-
+module_init(ioswitch_init);
+module_exit(ioswitch_exit);
 /*
  * Get rid of taint message by declaring code as GPL.
  */
 MODULE_LICENSE("GPL");
+MODULE_DESCRIPTION("Dynamic IO scheduler switcher");
