@@ -13,6 +13,7 @@
 
 
 #define DEV_PATH	"/dev/sda"
+#define DECISION_PT	0.5
 
 
 static struct task_struct *monitor = NULL;
@@ -57,7 +58,7 @@ int threadfn(void *data)
 		if (s_ave > peak)
 			peak = s_ave;
 #ifdef ELV_SWITCH
-		if (s_ave > peak / 2) {
+		if ((float)s_ave / peak > DECISION_PT) {
 			if (elv_switch(q, "anticipatory") > 0)
 				printk(KERN_INFO "elevator: switch to anticipatory\n");
 		} else {
