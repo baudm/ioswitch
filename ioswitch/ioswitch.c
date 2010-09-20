@@ -18,24 +18,24 @@
 
 
 struct raw_stats {
-	unsigned long rreq;
-	unsigned long wreq;
-	unsigned long long rsec;
-	unsigned long long wsec;
+	unsigned long rreq; /* read requests */
+	unsigned long wreq; /* write requests */
+	unsigned long long rsec; /* read sectors */
+	unsigned long long wsec; /* write sectors */
 };
 
 
 struct avg_stats {
-	unsigned long rreq_size;
-	unsigned long wreq_size;
-	unsigned long req_size;
+	unsigned long rreq_sz; /* read sectors/requests */
+	unsigned long wreq_sz; /* write sectors/requests */
+	unsigned long req_sz; /* avg sectors/requests */
 };
 
 
 static struct task_struct *monitor = NULL;
 /* circular buffer for stat samples */
 static struct raw_stats samples[MAX_SAMPLES];
-static struct raw_stats *cur, *old;
+static struct raw_stats *cur = NULL, *old = NULL;
 static short index = 0;
 
 
@@ -59,34 +59,34 @@ void read_stats(struct hd_struct *p)
 	cur->rsec = (unsigned long long)part_stat_read(p, sectors[READ]);
 	cur->wreq = part_stat_read(p, ios[WRITE]);
 	cur->wsec = (unsigned long long)part_stat_read(p, sectors[WRITE]);
-	/* get next index */
+	/* get next index... */
 	if (index < MAX_SAMPLES - 1)
 		index++;
 	else
 		index = 0;
-	/* and reference to the oldest reading */
+	/* and reference to the oldest sample */
 	old = &samples[index];
 }
 
 
-void compute_avg_stats(struct avg_stats *s, struct raw_stats *ref)
+void get_avg_stats(struct avg_stats *s, struct raw_stats *ref)
 {
 	if (ref) {
 		if (cur->rreq != ref->rreq)
-			s->rreq_size = (cur->rsec - ref->rsec) / (cur->rreq - ref->rreq);
+			s->rreq_sz = (cur->rsec - ref->rsec) / (cur->rreq - ref->rreq);
 		else
-			s->rreq_size = 0;
+			s->rreq_sz = 0;
 
 		if (cur->wreq != ref->wreq)
-			s->wreq_size = (cur->wsec - ref->wsec) / (cur->wreq - ref->wreq);
+			s->wreq_sz = (cur->wsec - ref->wsec) / (cur->wreq - ref->wreq);
 		else
-			s->wreq_size = 0;
+			s->wreq_sz = 0;
 	} else {
-		s->rreq_size = cur->rsec / cur->rreq;
-		s->wreq_size = cur->wsec / cur->wreq;
+		s->rreq_sz = cur->rsec / cur->rreq;
+		s->wreq_sz = cur->wsec / cur->wreq;
 	}
 
-	s->req_size = (s->rreq_size + s->wreq_size) / 2;
+	s->req_sz = (s->rreq_sz + s->wreq_sz) / 2;
 }
 
 
@@ -98,16 +98,16 @@ int threadfn(void *data)
 	struct request_queue *q = bdev_get_queue(bdev);
 #endif
 	struct avg_stats all, window;
-	unsigned long peak = 0;
+	unsigned long peak_req_sz = 0;
 
 	while (!kthread_should_stop()) {
 		read_stats(p);
-		compute_avg_stats(&all, NULL);
-		compute_avg_stats(&window, old);
-		if (window.req_size > peak)
-			peak = window.req_size;
+		get_avg_stats(&all, NULL);
+		get_avg_stats(&window, old);
+		if (window.req_sz > peak_req_sz)
+			peak_req_sz = window.req_sz;
 #ifdef ELV_SWITCH
-		if ((float)window.req_size / peak > DECISION_PT) {
+		if ((float)window.req_sz / peak_req_sz > DECISION_PT) {
 			if (elv_switch(q, "anticipatory") > 0)
 				printk(KERN_INFO "elevator: switch to anticipatory\n");
 		} else {
@@ -117,8 +117,8 @@ int threadfn(void *data)
 #endif
 		printk(KERN_INFO "s/r = %lu, s/w = %lu, ave = %lu; "
 			"5m: s/r = %lu, s/w = %lu, ave = %lu, peak = %lu\n",
-			all.rreq_size, all.wreq_size, all.req_size,
-			window.rreq_size, window.wreq_size, window.req_size, peak);
+			all.rreq_sz, all.wreq_sz, all.req_sz,
+			window.rreq_sz, window.wreq_sz, window.req_sz, peak_req_sz);
 		msleep_interruptible(60000);
 	}
 
