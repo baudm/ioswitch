@@ -43,11 +43,15 @@ int threadfn(void *data)
 			s_spr = (c_sr - p_sr) / (c_ior - p_ior);
 			p_ior = c_ior;
 			p_sr = c_sr;
+		} else {
+			s_spr = 0;
 		}
 		if (c_iow != p_iow) {
 			s_spw = (c_sw - p_sw) / (c_iow - p_iow);
 			p_iow = c_iow;
 			p_sw = c_sw;
+		} else {
+			s_spw = 0;
 		}
 		s_ave = (s_spr + s_spw) / 2;
 #ifdef ELV_SWITCH
@@ -59,9 +63,9 @@ int threadfn(void *data)
 				printk(KERN_INFO "elevator: switch to cfq\n");
 		}
 #endif
-		/*printk(KERN_INFO "s/r = %lu, s/w = %lu, ave = %lu; "
+		printk(KERN_INFO "s/r = %lu, s/w = %lu, ave = %lu; "
 			"60s: s/r = %lu, s/w = %lu, ave = %lu\n",
-			spr, spw, ave, s_spr, s_spw, s_ave);*/
+			spr, spw, ave, s_spr, s_spw, s_ave);
 		msleep_interruptible(60000);
 	}
 
@@ -72,6 +76,7 @@ int threadfn(void *data)
 int init_module(void)
 {
 	monitor = kthread_run(threadfn, NULL, "monitor");
+	printk(KERN_INFO "ioswitch loaded\n");
 	/*
 	 * A non 0 return means init_module failed; module can't be loaded.
 	 */
@@ -82,7 +87,7 @@ int init_module(void)
 void cleanup_module(void)
 {
 	kthread_stop(monitor);
-	printk(KERN_INFO "Unload ioswitch\n");
+	printk(KERN_INFO "ioswitch unloaded\n");
 }
 
 
