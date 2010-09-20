@@ -13,7 +13,6 @@
 
 
 #define DEV_PATH	"/dev/sda"
-#define BOUNDARY	50
 
 
 static struct task_struct *monitor = NULL;
@@ -27,6 +26,7 @@ int threadfn(void *data)
 	struct request_queue *q = bdev_get_queue(bdev);
 #endif
 
+	unsigned long peak = 0;
 	unsigned long ave, spr, spw, s_ave = 0, s_spr = 0, s_spw = 0;
 	unsigned long c_ior, c_iow, p_ior = 0, p_iow = 0;
 	unsigned long long c_sr, c_sw, p_sr = 0, p_sw = 0;
@@ -54,8 +54,10 @@ int threadfn(void *data)
 			s_spw = 0;
 		}
 		s_ave = (s_spr + s_spw) / 2;
+		if (s_ave > peak)
+			peak = s_ave;
 #ifdef ELV_SWITCH
-		if (s_ave > BOUNDARY) {
+		if (s_ave > peak / 2) {
 			if (elv_switch(q, "anticipatory") > 0)
 				printk(KERN_INFO "elevator: switch to anticipatory\n");
 		} else {
@@ -64,8 +66,8 @@ int threadfn(void *data)
 		}
 #endif
 		printk(KERN_INFO "s/r = %lu, s/w = %lu, ave = %lu; "
-			"60s: s/r = %lu, s/w = %lu, ave = %lu\n",
-			spr, spw, ave, s_spr, s_spw, s_ave);
+			"60s: s/r = %lu, s/w = %lu, ave = %lu, peak = %lu\n",
+			spr, spw, ave, s_spr, s_spw, s_ave, peak);
 		msleep_interruptible(60000);
 	}
 
