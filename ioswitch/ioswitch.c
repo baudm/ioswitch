@@ -26,17 +26,6 @@ struct raw_stats {
 static struct task_struct *monitor = NULL;
 
 /**
- * Copied verbatim from linux-2.6.32/kernel/sched.c
- */
-static unsigned long
-calc_load(unsigned long load, unsigned long exp, unsigned long active)
-{
-	load *= exp;
-	load += active * (FIXED_1 - exp);
-	return load >> FSHIFT;
-}
-
-/**
  * Calculate the average request size. Note that the very first call to this
  * function would yield the "total" average while succeeding calls would yield
  * an average based on the current and previous samples.
@@ -100,7 +89,7 @@ static int threadfn(void *data)
 		cur_req_sz = calc_req_sz(p);
 
 		/* Get the exponential moving average for a 5-minute interval */
-		ave_req_sz = calc_load(ave_req_sz, EXP_5, cur_req_sz);
+		CALC_LOAD(ave_req_sz, EXP_5, cur_req_sz);
 
 		/* Check if we have a new peak average request size */
 		if (ave_req_sz > peak_req_sz)
