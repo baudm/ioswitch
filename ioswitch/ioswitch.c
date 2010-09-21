@@ -10,10 +10,10 @@
 #include <linux/elevator.h>
 #include <linux/kthread.h>	  /* kthread_run */
 #include <linux/delay.h>	/* msleep */
+#include <linux/sched.h>	/* calc_load variables */
 
 #define DEV_PATH	"/dev/sda"
 #define DECISION_PT	0.5
-#define MAX_SAMPLES	5
 
 struct raw_stats {
 	unsigned long rreq; /* read requests */
@@ -22,64 +22,49 @@ struct raw_stats {
 	unsigned long long wsec; /* write sectors */
 };
 
-struct avg_stats {
-	unsigned long rreq_sz; /* read sectors/requests */
-	unsigned long wreq_sz; /* write sectors/requests */
-	unsigned long req_sz; /* avg sectors/requests */
-};
-
 static struct task_struct *monitor = NULL;
-/* circular buffer for stat samples */
-static struct raw_stats samples[MAX_SAMPLES];
-static struct raw_stats *cur = NULL, *old = NULL;
-static short index = 0;
 
-static void init_buffer(void)
+/**
+ * copied from linux-2.6.32/kernel/sched.c
+ */
+static unsigned long
+calc_load(unsigned long load, unsigned long exp, unsigned long active)
 {
-	short i;
-
-	for (i = 0; i < MAX_SAMPLES; i++) {
-		samples[i].rreq = 0;
-		samples[i].wreq = 0;
-		samples[i].rsec = 0;
-		samples[i].wsec = 0;
-	}
+	load *= exp;
+	load += active * (FIXED_1 - exp);
+	return load >> FSHIFT;
 }
 
-static void read_stats(struct hd_struct *p)
+static unsigned long calc_req_sz(struct hd_struct *part)
 {
-	cur = &samples[index];
-	cur->rreq = part_stat_read(p, ios[READ]);
-	cur->rsec = (unsigned long long)part_stat_read(p, sectors[READ]);
-	cur->wreq = part_stat_read(p, ios[WRITE]);
-	cur->wsec = (unsigned long long)part_stat_read(p, sectors[WRITE]);
-	/* get next index... */
-	if (index < MAX_SAMPLES - 1)
-		index++;
-	else
-		index = 0;
-	/* and reference to the oldest sample */
-	old = &samples[index];
-}
+	static struct raw_stats data[2] = {{0, 0, 0, 0}, {0, 0, 0, 0}};
+	static struct raw_stats *c = &data[0], *p = &data[1];
+	unsigned long rreq_sz = 0, wreq_sz = 0;
 
-static void get_avg_stats(struct avg_stats *s, struct raw_stats *ref)
-{
-	if (ref) {
-		if (cur->rreq != ref->rreq)
-			s->rreq_sz = (cur->rsec - ref->rsec) / (cur->rreq - ref->rreq);
-		else
-			s->rreq_sz = 0;
+	/* read stats from disk */
+	c->rreq = part_stat_read(part, ios[READ]);
+	c->rsec = (unsigned long long)part_stat_read(part, sectors[READ]);
+	c->wreq = part_stat_read(part, ios[WRITE]);
+	c->wsec = (unsigned long long)part_stat_read(part, sectors[WRITE]);
 
-		if (cur->wreq != ref->wreq)
-			s->wreq_sz = (cur->wsec - ref->wsec) / (cur->wreq - ref->wreq);
-		else
-			s->wreq_sz = 0;
+	/* compute ave read request size */
+	if (c->rreq != p->rreq)
+		rreq_sz = (c->rsec - p->rsec) / (c->rreq - p->rreq);
+
+	/* compute ave write request size */
+	if (c->wreq != p->wreq)
+		wreq_sz = (c->wsec - p->wsec) / (c->wreq - p->wreq);
+
+	/* swap pointers of current and previous samples */
+	if (c == &data[0]) {
+		c = &data[1];
+		p = &data[0];
 	} else {
-		s->rreq_sz = cur->rsec / cur->rreq;
-		s->wreq_sz = cur->wsec / cur->wreq;
+		c = &data[0];
+		p = &data[1];
 	}
 
-	s->req_sz = (s->rreq_sz + s->wreq_sz) / 2;
+	return (rreq_sz + wreq_sz) / 2;
 }
 
 static int threadfn(void *data)
@@ -89,17 +74,21 @@ static int threadfn(void *data)
 #ifdef ELV_SWITCH
 	struct request_queue *q = bdev_get_queue(bdev);
 #endif
-	struct avg_stats all, window;
-	unsigned long peak_req_sz = 0;
+	unsigned long cur_req_sz, ave_req_sz, peak_req_sz = 0;
+
+	/* get initial sample and average */
+	ave_req_sz = calc_req_sz(p);
 
 	while (!kthread_should_stop()) {
-		read_stats(p);
-		get_avg_stats(&all, NULL);
-		get_avg_stats(&window, old);
-		if (window.req_sz > peak_req_sz)
-			peak_req_sz = window.req_sz;
+		/* get average req size for current interval */
+		cur_req_sz = calc_req_sz(p);
+		/* get the exponential moving average */
+		ave_req_sz = calc_load(ave_req_sz, EXP_5, cur_req_sz);
+		/* check if we have a new peak average req size */
+		if (ave_req_sz > peak_req_sz)
+			peak_req_sz = ave_req_sz;
 #ifdef ELV_SWITCH
-		if ((float)window.req_sz / peak_req_sz > DECISION_PT) {
+		if ((float)ave_req_sz / peak_req_sz > DECISION_PT) {
 			if (elv_switch(q, "anticipatory") > 0)
 				printk(KERN_INFO "elevator: switch to anticipatory\n");
 		} else {
@@ -107,11 +96,9 @@ static int threadfn(void *data)
 				printk(KERN_INFO "elevator: switch to cfq\n");
 		}
 #endif
-		printk(KERN_INFO "s/r = %lu, s/w = %lu, ave = %lu; "
-			"5m: s/r = %lu, s/w = %lu, ave = %lu, peak = %lu\n",
-			all.rreq_sz, all.wreq_sz, all.req_sz,
-			window.rreq_sz, window.wreq_sz, window.req_sz, peak_req_sz);
-		msleep_interruptible(60000);
+		printk(KERN_INFO "cur = %lu, ave = %lu, peak = %lu\n",
+				cur_req_sz, ave_req_sz, peak_req_sz);
+		msleep_interruptible(30000);
 	}
 
 	return 0;
@@ -119,7 +106,6 @@ static int threadfn(void *data)
 
 static int __init ioswitch_init(void)
 {
-	init_buffer();
 	monitor = kthread_run(threadfn, NULL, "monitor");
 	printk(KERN_INFO "ioswitch loaded\n");
 
