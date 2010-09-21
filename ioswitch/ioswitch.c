@@ -70,7 +70,8 @@ static unsigned long calc_req_sz(struct hd_struct *part)
 		p = &data[1];
 	}
 
-	return (rreq_sz + wreq_sz) / 2;
+	/* Return the average request size as fixed-point */
+	return FIXED_1 * (rreq_sz + wreq_sz) / 2;
 }
 
 static int threadfn(void *data)
@@ -115,7 +116,7 @@ static int threadfn(void *data)
 		}
 #endif
 		printk(KERN_INFO "cur = %lu, ave = %lu, peak = %lu\n",
-				cur_req_sz, ave_req_sz, peak_req_sz);
+				cur_req_sz / FIXED_1, ave_req_sz / FIXED_1, peak_req_sz / FIXED_1);
 		msleep_interruptible(SAMPLING_PERIOD);
 	}
 
