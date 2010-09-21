@@ -13,7 +13,7 @@
 #include <linux/sched.h>	/* calc_load variables */
 
 #define DEV_PATH	"/dev/sda"
-#define DECISION_PT	0.5
+#define DECISION_PT	50		/* 50 percent */
 #define SAMPLING_PERIOD	20000	/* 20-sec intervals */
 #define EXP_5_20	1916		/* 1/exp(20sec/5min) as fixed-point */
 
@@ -83,7 +83,7 @@ static int threadfn(void *data)
 	 * Set the initial average request size to be just below the decision point
 	 * so that CFQ would be selected as the initial scheduler.
 	 */
-	ave_req_sz = (unsigned long)(DECISION_PT * peak_req_sz);
+	ave_req_sz = (DECISION_PT * peak_req_sz) / 100;
 
 	while (!kthread_should_stop()) {
 		/* Get the average request size for the current interval */
@@ -97,7 +97,7 @@ static int threadfn(void *data)
 			peak_req_sz = ave_req_sz;
 
 #ifdef ELV_SWITCH
-		if ((float)ave_req_sz / peak_req_sz > DECISION_PT) {
+		if ((100 * ave_req_sz) / peak_req_sz > DECISION_PT) {
 			if (elv_switch(q, "anticipatory") > 0)
 				printk(KERN_INFO "elevator: switch to anticipatory\n");
 		} else {
