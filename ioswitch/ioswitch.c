@@ -25,7 +25,7 @@ struct raw_stats {
 static struct task_struct *monitor = NULL;
 
 /**
- * copied from linux-2.6.32/kernel/sched.c
+ * Copied verbatim from linux-2.6.32/kernel/sched.c
  */
 static unsigned long
 calc_load(unsigned long load, unsigned long exp, unsigned long active)
@@ -35,27 +35,32 @@ calc_load(unsigned long load, unsigned long exp, unsigned long active)
 	return load >> FSHIFT;
 }
 
+/**
+ * Calculate the average request size. Note that the very first call to this
+ * function would yield the "total" average while succeeding calls would yield
+ * an average based on the current and previous samples.
+ */
 static unsigned long calc_req_sz(struct hd_struct *part)
 {
 	static struct raw_stats data[2] = {{0, 0, 0, 0}, {0, 0, 0, 0}};
 	static struct raw_stats *c = &data[0], *p = &data[1];
 	unsigned long rreq_sz = 0, wreq_sz = 0;
 
-	/* read stats from disk */
+	/* Read stats from disk */
 	c->rreq = part_stat_read(part, ios[READ]);
 	c->rsec = (unsigned long long)part_stat_read(part, sectors[READ]);
 	c->wreq = part_stat_read(part, ios[WRITE]);
 	c->wsec = (unsigned long long)part_stat_read(part, sectors[WRITE]);
 
-	/* compute ave read request size */
+	/* Compute the average read request size */
 	if (c->rreq != p->rreq)
 		rreq_sz = (c->rsec - p->rsec) / (c->rreq - p->rreq);
 
-	/* compute ave write request size */
+	/* Compute the average write request size */
 	if (c->wreq != p->wreq)
 		wreq_sz = (c->wsec - p->wsec) / (c->wreq - p->wreq);
 
-	/* swap pointers of current and previous samples */
+	/* Swap pointers of current and previous samples */
 	if (c == &data[0]) {
 		c = &data[1];
 		p = &data[0];
@@ -74,19 +79,31 @@ static int threadfn(void *data)
 #ifdef ELV_SWITCH
 	struct request_queue *q = bdev_get_queue(bdev);
 #endif
-	unsigned long cur_req_sz, ave_req_sz, peak_req_sz = 0;
+	unsigned long cur_req_sz, ave_req_sz, peak_req_sz;
 
-	/* get initial sample and average */
-	ave_req_sz = calc_req_sz(p);
+	/*
+	 * Get the initial peak average request size. This value will be equal to
+	 * the total sectors accessed / total requests.
+	 */
+	peak_req_sz = calc_req_sz(p);
+
+	/*
+	 * Set the initial average request size to be just below the decision point
+	 * so that CFQ would be selected as the initial scheduler.
+	 */
+	ave_req_sz = (unsigned long)(DECISION_PT * peak_req_sz);
 
 	while (!kthread_should_stop()) {
-		/* get average req size for current interval */
+		/* Get the average request size for the current interval */
 		cur_req_sz = calc_req_sz(p);
-		/* get the exponential moving average */
+
+		/* Get the exponential moving average for a 5-minute interval */
 		ave_req_sz = calc_load(ave_req_sz, EXP_5, cur_req_sz);
-		/* check if we have a new peak average req size */
+
+		/* Check if we have a new peak average request size */
 		if (ave_req_sz > peak_req_sz)
 			peak_req_sz = ave_req_sz;
+
 #ifdef ELV_SWITCH
 		if ((float)ave_req_sz / peak_req_sz > DECISION_PT) {
 			if (elv_switch(q, "anticipatory") > 0)
