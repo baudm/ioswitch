@@ -14,6 +14,7 @@
 
 #define DEV_PATH	"/dev/sda"
 #define DECISION_PT	0.5
+#define SAMPLING_PERIOD	10000
 
 struct raw_stats {
 	unsigned long rreq; /* read requests */
@@ -115,7 +116,7 @@ static int threadfn(void *data)
 #endif
 		printk(KERN_INFO "cur = %lu, ave = %lu, peak = %lu\n",
 				cur_req_sz, ave_req_sz, peak_req_sz);
-		msleep_interruptible(30000);
+		msleep_interruptible(SAMPLING_PERIOD);
 	}
 
 	return 0;
