@@ -1,0 +1,4 @@
+[rand-read]
+rw=randread
+size=256M
+directory=/tmp

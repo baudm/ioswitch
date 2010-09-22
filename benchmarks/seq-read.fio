@@ -1,0 +1,4 @@
+[seq-read]
+rw=read
+size=256M
+directory=/tmp

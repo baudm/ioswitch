@@ -1,0 +1,4 @@
+These benchmarks require fio (see http://www.linux.com/archive/feature/131063)
+The usage is as follows:
+
+$ fio <benchmark>.fio
