@@ -38,7 +38,7 @@ static unsigned long calc_req_sz(struct hd_struct *part)
 	static struct raw_stats data[2] = {{0, 0, 0, 0}, {0, 0, 0, 0}};
 	/* Pointers to the current and previous samples, respectively */
 	static struct raw_stats *c = &data[0], *p = &data[1];
-	unsigned long rreq_sz = 0, wreq_sz = 0;
+	unsigned rreq_sz = 0, wreq_sz = 0;
 
 	/* Read stats for disk */
 	c->rreq = part_stat_read(part, ios[READ]);
@@ -95,7 +95,7 @@ static int threadfn(void *data)
 		/* Get the average request size for the current interval */
 		cur_req_sz = calc_req_sz(p);
 
-		/* Get the exponential moving average for a 5-minute interval */
+		/* Get the exponential moving average for a 1-minute interval */
 		CALC_LOAD(ave_req_sz, EXP_1_20, cur_req_sz);
 
 		/* Check if we have a new peak average request size */
