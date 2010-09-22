@@ -94,7 +94,7 @@ static int threadfn(void *data)
 		/* Get the average request size for the current interval */
 		cur_req_sz = calc_req_sz(p);
 
-		/* Get the exponential moving average for a 1-minute interval */
+		/* Get the exponential moving average for a 1-minute window */
 		CALC_LOAD(ave_req_sz, EXP_1_15, cur_req_sz);
 
 		/* Check if we have a new peak average request size */
@@ -105,9 +105,8 @@ static int threadfn(void *data)
 		if ((100 * ave_req_sz) / peak_req_sz > DECISION_PT) {
 			if (elv_switch(q, "anticipatory") > 0)
 				printk(KERN_INFO "elevator: switch to anticipatory\n");
-		} else {
-			if (elv_switch(q, "cfq") > 0)
-				printk(KERN_INFO "elevator: switch to cfq\n");
+		} else if (elv_switch(q, "cfq") > 0) {
+			printk(KERN_INFO "elevator: switch to cfq\n");
 		}
 #endif
 		printk(KERN_INFO "cur = %lu, ave = %lu, peak = %lu\n",
@@ -128,6 +127,7 @@ static int __init ioswitch_init(void)
 
 static void __exit ioswitch_exit(void)
 {
+	force_sig(SIGUSR1, monitor);
 	kthread_stop(monitor);
 	printk(KERN_INFO "ioswitch unloaded\n");
 }
