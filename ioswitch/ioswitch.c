@@ -15,7 +15,8 @@
 #define DEV_PATH	"/dev/sda"
 #define DECISION_PT	50		/* 50 percent */
 #define SAMPLING_T	20000	/* 20-sec sampling period */
-#define EXP_5_20	1916	/* 1/exp(20sec/5min) as fixed-point */
+#define EXP_1_20	1467	/* 1/exp(20sec/1min) as fixed-point */
+#define EXP_5_20	1916	/* 1/exp(20sec/5min) */
 
 struct raw_stats {
 	unsigned long rreq; /* read requests */
@@ -95,7 +96,7 @@ static int threadfn(void *data)
 		cur_req_sz = calc_req_sz(p);
 
 		/* Get the exponential moving average for a 5-minute interval */
-		CALC_LOAD(ave_req_sz, EXP_5_20, cur_req_sz);
+		CALC_LOAD(ave_req_sz, EXP_1_20, cur_req_sz);
 
 		/* Check if we have a new peak average request size */
 		if (ave_req_sz > peak_req_sz)
