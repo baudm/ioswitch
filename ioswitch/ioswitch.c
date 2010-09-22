@@ -14,8 +14,8 @@
 
 #define DEV_PATH	"/dev/sda"
 #define DECISION_PT	50		/* 50 percent */
-#define SAMPLING_PERIOD	20000	/* 20-sec intervals */
-#define EXP_5_20	1916		/* 1/exp(20sec/5min) as fixed-point */
+#define SAMPLING_T	20000	/* 20-sec sampling period */
+#define EXP_5_20	1916	/* 1/exp(20sec/5min) as fixed-point */
 
 struct raw_stats {
 	unsigned long rreq; /* read requests */
@@ -33,11 +33,13 @@ static struct task_struct *monitor = NULL;
  */
 static unsigned long calc_req_sz(struct hd_struct *part)
 {
+	/* Storage for the samples */
 	static struct raw_stats data[2] = {{0, 0, 0, 0}, {0, 0, 0, 0}};
+	/* Pointers to the current and previous samples, respectively */
 	static struct raw_stats *c = &data[0], *p = &data[1];
 	unsigned long rreq_sz = 0, wreq_sz = 0;
 
-	/* Read stats from disk */
+	/* Read stats for disk */
 	c->rreq = part_stat_read(part, ios[READ]);
 	c->rsec = (unsigned long long)part_stat_read(part, sectors[READ]);
 	c->wreq = part_stat_read(part, ios[WRITE]);
@@ -83,7 +85,7 @@ static int threadfn(void *data)
 	 * Set the initial average request size to be just below the decision point
 	 * so that CFQ would be selected as the initial scheduler.
 	 */
-	ave_req_sz = (DECISION_PT * peak_req_sz) / 100;
+	ave_req_sz = (DECISION_PT * peak_req_sz) / 101;
 
 	while (!kthread_should_stop()) {
 		/* Get the average request size for the current interval */
@@ -107,7 +109,7 @@ static int threadfn(void *data)
 #endif
 		printk(KERN_INFO "cur = %lu, ave = %lu, peak = %lu\n",
 				cur_req_sz / FIXED_1, ave_req_sz / FIXED_1, peak_req_sz / FIXED_1);
-		msleep_interruptible(SAMPLING_PERIOD);
+		msleep_interruptible(SAMPLING_T);
 	}
 
 	return 0;
