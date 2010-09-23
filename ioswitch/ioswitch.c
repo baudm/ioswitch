@@ -1,16 +1,18 @@
 /**
  * ioswitch.c
+ *
+ * Dynamic I/O scheduler switcher
  */
 
-#include <linux/kernel.h>	/* Needed for KERN_INFO */
-#include <linux/module.h>	/* Needed by all modules */
-#include <linux/init.h>		/* Needed for the macros */
+#include <linux/kernel.h>
+#include <linux/module.h>
+#include <linux/init.h>
 #include <linux/blkdev.h>
-#include <linux/genhd.h>	/* struct hd_struct */
+#include <linux/genhd.h>
 #include <linux/elevator.h>
-#include <linux/kthread.h>	  /* kthread_run */
-#include <linux/delay.h>	/* msleep */
-#include <linux/sched.h>	/* calc_load variables */
+#include <linux/sched.h>
+#include <linux/kthread.h>
+#include <linux/delay.h>
 
 #define DEV_PATH	"/dev/sda"
 #define DECISION_PT	50		/* 50 percent */
@@ -127,6 +129,7 @@ static int __init ioswitch_init(void)
 
 static void __exit ioswitch_exit(void)
 {
+	/* Interrupt msleep_interruptible() */
 	force_sig(SIGUSR1, monitor);
 	kthread_stop(monitor);
 	printk(KERN_INFO "ioswitch unloaded\n");
