@@ -1,0 +1,5 @@
+[stream-read]
+rw=randread
+size=256m
+iodepth_batch=64
+directory=/tmp/fio
