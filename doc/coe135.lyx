@@ -193,7 +193,7 @@ IEEEPARstart{
 
 \end_inset
 
- C
+C
 \begin_inset ERT
 status collapsed
 
@@ -589,6 +589,26 @@ sectors accessed
 I/O requests processed
 \emph default
 .
+\end_layout
+
+\begin_layout Subsection
+Statistics Processing
+\end_layout
+
+\begin_layout Standard
+We patterned the statistics processing with the CPU load computation of
+ Linux.
+ calc_load() function, used to calculate CPU load, employs exponential moving
+ average.
+ The exponential moving average is a type of finite impulse response filter
+ that applies weighting factor that decreases exponentially.
+ The weighting for each older data point decreases exponentially, never
+ reaching zero.
+\end_layout
+
+\begin_layout Standard
+In our implementation, we used a 1-minute time window so that the output
+ of calc_load() stays responsive yet resilient against I/O bursts.
 \end_layout
 
 \begin_layout Subsection
