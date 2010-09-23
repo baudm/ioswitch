@@ -1,0 +1,15 @@
+[global]
+rw=randread
+size=256m
+directory=/tmp/fio
+
+[read]
+rw=randread
+blocksize_range=2k-16k
+iodepth_batch=20
+
+[write]
+rw=randwrite
+blocksize_range=2k-16k
+iodepth_batch=20
+thinktime=1
