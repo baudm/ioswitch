@@ -598,8 +598,11 @@ Statistics Processing
 \begin_layout Standard
 We patterned the statistics processing with the CPU load computation of
  Linux.
- calc_load() function, used to calculate CPU load, employs exponential moving
- average.
+ 
+\family typewriter
+calc_load()
+\family default
+ function, used to calculate CPU load, employs exponential moving average.
  The exponential moving average is a type of finite impulse response filter
  that applies weighting factor that decreases exponentially.
  The weighting for each older data point decreases exponentially, never
@@ -608,7 +611,11 @@ We patterned the statistics processing with the CPU load computation of
 
 \begin_layout Standard
 In our implementation, we used a 1-minute time window so that the output
- of calc_load() stays responsive yet resilient against I/O bursts.
+ of 
+\family typewriter
+calc_load()
+\family default
+ stays responsive yet resilient against I/O bursts.
 \end_layout
 
 \begin_layout Subsection
