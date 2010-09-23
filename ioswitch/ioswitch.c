@@ -106,12 +106,12 @@ static int threadfn(void *data)
 #ifdef ELV_SWITCH
 		if ((100 * ave_req_sz) / peak_req_sz > DECISION_PT) {
 			if (elv_switch(q, "anticipatory") > 0)
-				printk(KERN_INFO "elevator: switch to anticipatory\n");
+				printk(KERN_INFO "ioswitch: switch to anticipatory\n");
 		} else if (elv_switch(q, "cfq") > 0) {
-			printk(KERN_INFO "elevator: switch to cfq\n");
+			printk(KERN_INFO "ioswitch: switch to cfq\n");
 		}
 #endif
-		printk(KERN_INFO "cur = %lu, ave = %lu, peak = %lu\n",
+		printk(KERN_INFO "ioswitch: cur = %lu, ave = %lu, peak = %lu\n",
 				cur_req_sz >> FSHIFT, ave_req_sz >> FSHIFT, peak_req_sz >> FSHIFT);
 		msleep_interruptible(SAMPLING_T);
 	}
