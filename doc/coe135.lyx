@@ -80,7 +80,7 @@ cros/latex/contrib/IEEEtran/IEEEtran_HOWTO.pdf
 \begin_layout Title
 
 \size huge
-Workload-dependent I/O Scheduler Selection
+Workload-dependent Dynamic I/O Scheduler Selection
 \end_layout
 
 \begin_layout Author
