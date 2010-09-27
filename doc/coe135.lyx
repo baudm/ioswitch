@@ -397,18 +397,29 @@ Dynamic Disk Scheduling Algorithm
 \end_layout
 
 \begin_layout Standard
-Most I/O scheduler employ algorithms which are best suited for a particular
- pattern of disk accesses.
- Some work best for sequential access, others for random activity, and others
- attempt to provide the best overall throughput and provide reasonable performan
-ce for both sequential and random accesses.
+The I/O Analyzer (IOAZ) 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "key-5"
+
+\end_inset
+
+ attempts to examine the pattern of I/O requests in real-time.
+ Based on the pattern examined and the decision matrices, the IOAZ appropriately
+ changes the I/O scheduler in use.
 \end_layout
 
 \begin_layout Standard
-If these patterns of disk accesses could be detected in real-time, then
- the system could select the disk scheduling algorithm best suited to this
- workload, and improve performance accordingly.
- This is the basis of the I/O Analyzer (IOAZ).
+IOAZ saves information of I/O requests from hooks placed within the Disk
+ Request Queuing System to its internal Activity Store.
+ An I/O Analyzer Process periodically analyzes data collected during the
+ last period of time from the Activity Store and purges this data when it
+ is no longer needed.
+ This anlysis first identifies the pattern in disk accesses by comparing
+ it with emprically derived thresholds.
+ And then, it determines the best I/O scheduler for that pattern based on
+ decision matrices derived from their experiments.
+ The IOAZ changes the I/O scheduler if needed.
 \end_layout
 
 \begin_layout Standard
@@ -446,20 +457,29 @@ IOAZ Architecture
 \end_layout
 
 \begin_layout Standard
-The researcher first analyzed what the best I/O scheduler for a specific
- workload is.
- The results of the experiment were used as the basis for decision matrices
- to be used by IOAZ in determining which disk scheduling algorithm to use
- given observations of system workload and an optimization goal.
+The researches defined the patterns as sequential read, sequential write,
+ random read, and random write.
+ Their indicator of a pattern being sequential or random is the number of
+ I/O merge requests, which pools multiple requests for adjacent disk blocks
+ into a single request for multiple blocks.
+ They argue that large number of I/O merged requests is highly indicative
+ of sequential activity and vice versa.
 \end_layout
 
 \begin_layout Standard
-The researcher used MySQL and the included sql-bench to test the IOAZ's
+The researchers used MySQL and the included sql-bench to test the IOAZ's
  performance as compared to static I/O scheduler.
- The researcher also conducted disk zeroing experiment wherein one gigabyte
+ The researchers conducted disk zeroing experiment wherein one gigabyte
  partition was overwritten with zeroes in a sequential fashion in a single
  pass.
  In both tests, IOAZ performed better compared to static I/O scheduler.
+ Lastly, a test was also carried out using IOZone, producing a variety of
+ extreme workloads.
+ The IOAZ outperformed the Deadline and CFQ scheduler, but had difficulty
+ bettering AS in experiments with many processes or FCFS in experiments
+ with a single process.
+ The researchers found out that it was because of the overhead when the
+ IOAZ switches scheduler.
 \end_layout
 
 \begin_layout Section
