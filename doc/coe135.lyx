@@ -1,4 +1,4 @@
-#LyX 1.6.7 created this file. For more info see http://www.lyx.org/
+#LyX 1.6.5 created this file. For more info see http://www.lyx.org/
 \lyxformat 345
 \begin_document
 \begin_header
@@ -193,7 +193,7 @@ IEEEPARstart{
 
 \end_inset
 
-C
+ C
 \begin_inset ERT
 status collapsed
 
@@ -299,20 +299,9 @@ Automatic I/O Scheduler Selection
 \end_layout
 
 \begin_layout Standard
-Linux provides four I/O schedulers to meet different workload requirements.
- Among them are the Deadline Scheduler which is useful for real-time workloads
- and the Completely Fair Queuing (CFQ) which distribute the available I/O
- bandwidth among processes equally.
- At boot time, only one of these schedulers is selected and applied to all
- drives in the system.
- To achieve optimal performance, the scheduler must exploit the current
- workload characteristics, e.g.
- throughput and fairness.
- The Linux kernel provides an interface where the user can switch among
- these schedulers.
- However, to do so would require expertise on I/O performance.
- ADIO provides a method to automate scheduler selection based on system
- characteristics and current workload 
+Automatic and Dynamic I/O scheduler selection algortihm, called ADIO, automates
+ scheduler selection based on system characteristics and current workload
+ 
 \begin_inset CommandInset citation
 LatexCommand cite
 key "key-2"
@@ -323,13 +312,12 @@ key "key-2"
 \end_layout
 
 \begin_layout Standard
-The main criteria for this proposed selection is bounded latency and throughput.
- At first, the Automatic and Dynamic I/O scheduler (ADIO) algorithm chooses
- between CFQ and Deadline and ensures that the maximum request latency is
- bounded.
+The main criteria for this proposed selection is bounded latency and maximum
+ throughput.
+ ADIO ensures that the maximum request latency is bounded.
  If it is, it prioritizes throughput.
- This optimization is done using feedback-based control and the I/O scheduler
- component called Dynamic and Adaptive Scheduler Selector (DASS).
+ This optimization is done using feedback-based control, which is called
+ Dynamic and Adaptive Scheduler Selector (DASS).
 \end_layout
 
 \begin_layout Standard
@@ -367,11 +355,11 @@ ADIO Architecture
 \end_layout
 
 \begin_layout Standard
-The DASS is consist of two components, the request statistics collection
- monitor and the I/O scheduler selection controller.
+The DASS consists of two components: a request statistics collection monitor
+ and an I/O scheduler selection controller.
  The request statistics collection monitor collects the maximum latency
- for read and write requests based on I/O arrivals from workloads and the
- number of read and write requests serviced .
+ for read and write requests and the number of read and write requests serviced
+ .
  The statistics is recorded and is then used by the controller to determine
  which scheduler should be active to accommodate latency and bandwidth guarantee
 s.
@@ -385,11 +373,9 @@ s.
 \end_layout
 
 \begin_layout Standard
-Swapping is done by clearing the current scheduler queues and initializing
- the new scheduler queue.
- The drained queue is re-queued in the new scheduler.
- For large numbers of requests, this can incur a considerable overhead but
- does not impact the utilization of the system.
+Their experimental results using tiobench showed that DASS enforces latency
+ bounds, while providing better utilization than the default scheduler,
+ CFQ.
 \end_layout
 
 \begin_layout Subsection
@@ -457,8 +443,8 @@ IOAZ Architecture
 \end_layout
 
 \begin_layout Standard
-The researches defined the patterns as sequential read, sequential write,
- random read, and random write.
+They defined the patterns as sequential read, sequential write, random read,
+ and random write.
  Their indicator of a pattern being sequential or random is the number of
  I/O merge requests, which pools multiple requests for adjacent disk blocks
  into a single request for multiple blocks.
@@ -467,19 +453,19 @@ The researches defined the patterns as sequential read, sequential write,
 \end_layout
 
 \begin_layout Standard
-The researchers used MySQL and the included sql-bench to test the IOAZ's
- performance as compared to static I/O scheduler.
- The researchers conducted disk zeroing experiment wherein one gigabyte
- partition was overwritten with zeroes in a sequential fashion in a single
- pass.
- In both tests, IOAZ performed better compared to static I/O scheduler.
- Lastly, a test was also carried out using IOZone, producing a variety of
- extreme workloads.
+They used MySQL's sql-bench to test the IOAZ's performance.
+ They also conducted disk zeroing experiment, wherein one gigabyte partition
+ was overwritten with zeroes in a sequential fashion in a single pass.
+ In both tests, IOAZ performed better compared to other I/O scheduler.
+\end_layout
+
+\begin_layout Standard
+Lastly, a test using IOZone was carried out.
  The IOAZ outperformed the Deadline and CFQ scheduler, but had difficulty
  bettering AS in experiments with many processes or FCFS in experiments
  with a single process.
- The researchers found out that it was because of the overhead when the
- IOAZ switches scheduler.
+ They found out that it was because of the overhead when the IOAZ switches
+ scheduler.
 \end_layout
 
 \begin_layout Section
@@ -622,7 +608,8 @@ We patterned the statistics processing with the CPU load computation of
 \family typewriter
 calc_load()
 \family default
- function, used to calculate CPU load, employs exponential moving average.
+ function, which is used to calculate CPU load, employs exponential moving
+ average.
  The exponential moving average is a type of finite impulse response filter
  that applies weighting factor that decreases exponentially.
  The weighting for each older data point decreases exponentially, never
@@ -670,7 +657,7 @@ The scheduler switcher will be implemented as a kernel module.
  On load, it will spawn a kthread that would periodically look at the I/O
  statistics and determine the current workload.
  Once the current workload is determined, it would select the appropriate
- I/O scheduler (if needed).
+ I/O scheduler, if needed.
  Based on related research, we have determined that the best I/O scheduler
  for Sequential I/O is 
 \emph on
