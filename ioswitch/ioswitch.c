@@ -15,7 +15,7 @@
 #include <linux/delay.h>
 
 #define DEV_PATH	"/dev/sda"
-#define PERCENT_SEQ	50		/* 50 percent */
+#define PERCENT_SEQ	75		/* 75 percent sequential */
 #define SAMPLING_T	15000	/* 15-sec sampling period */
 #undef EXP_1
 #define EXP_1		1595	/* 1/exp(15sec/1min) as fixed-point */
@@ -106,17 +106,12 @@ static int threadfn(void *data)
 	peak_req_sz[WRITE] = cur.req_sz[WRITE];
 
 	/* Get the initial average requests */
+	msleep_interruptible(SAMPLING_T);
 	get_stats(&ave, part);
-
-	/*
-	 * Set the initial average request size to be just below the decision point
-	 * so that the workload would be classified as random.
-	 */
-	ave.req_sz[READ] = (PERCENT_SEQ * peak_req_sz[READ]) / 101;
-	ave.req_sz[WRITE] = (PERCENT_SEQ * peak_req_sz[WRITE]) / 101;
 
 	/* Loop until kthread_stop() is called */
 	while (!kthread_should_stop()) {
+		msleep_interruptible(SAMPLING_T);
 		/* Get the average stats for the current interval */
 		get_stats(&cur, part);
 
@@ -171,11 +166,11 @@ static int threadfn(void *data)
 			if (elv_switch(queue, "cfq") > 0)
 				printk(KERN_INFO "ioswitch: switch to cfq\n");
 #endif
+			break;
 		}
 		printk(KERN_INFO "ioswitch: read: cur = %lu, ave = %lu, peak = %lu; write: cur = %lu, ave = %lu, peak = %lu\n",
 				cur.req_sz[READ] >> FSHIFT, ave.req_sz[READ] >> FSHIFT, peak_req_sz[READ] >> FSHIFT,
 				cur.req_sz[WRITE] >> FSHIFT, ave.req_sz[WRITE] >> FSHIFT, peak_req_sz[WRITE] >> FSHIFT);
-		msleep_interruptible(SAMPLING_T);
 	}
 
 	return 0;
