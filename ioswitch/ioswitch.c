@@ -96,6 +96,12 @@ static int threadfn(void *data)
 	struct ave_stats cur, ave; /* Current and average stats data */
 	unsigned long peak_req_sz[2]; /* Peak average request size */
 	unsigned short workload, rw;
+	char *msg, messages[][17] = {
+		"sequential read",
+		"sequential write",
+		"random read",
+		"random write"
+	};
 
 	/*
 	 * Get the initial peak average request size. This value will be equal to
@@ -105,8 +111,8 @@ static int threadfn(void *data)
 	peak_req_sz[READ] = cur.req_sz[READ];
 	peak_req_sz[WRITE] = cur.req_sz[WRITE];
 
-	/* Get the initial average requests */
 	msleep_interruptible(SAMPLING_T);
+	/* Get the initial average requests */
 	get_stats(&ave, part);
 
 	/* Loop until kthread_stop() is called */
@@ -117,8 +123,8 @@ static int threadfn(void *data)
 
 		/* Get the exponential moving average for a 1-minute window */
 		CALC_LOAD(ave.req[READ], EXP_1, cur.req[READ]);
-		CALC_LOAD(ave.req_sz[READ], EXP_1, cur.req_sz[READ]);
 		CALC_LOAD(ave.req[WRITE], EXP_1, cur.req[WRITE]);
+		CALC_LOAD(ave.req_sz[READ], EXP_1, cur.req_sz[READ]);
 		CALC_LOAD(ave.req_sz[WRITE], EXP_1, cur.req_sz[WRITE]);
 
 		/* Check for new peak average request sizes */
@@ -143,13 +149,13 @@ static int threadfn(void *data)
 		else
 			workload |= WL_RAND;
 
+		msg = NULL;
 		switch (workload) {
 		case WL_SEQ | WL_READ:
-			/*printk(KERN_INFO "ioswitch: sequential read\n");
-			break;*/
-
+			msg = messages[0];
 		case WL_SEQ | WL_WRITE:
-			//printk(KERN_INFO "ioswitch: sequential write\n");
+			if (!msg)
+				msg = messages[1];
 #ifdef ELV_SWITCH
 			if (elv_switch(queue, "anticipatory") > 0)
 				printk(KERN_INFO "ioswitch: switch to anticipatory\n");
@@ -157,18 +163,16 @@ static int threadfn(void *data)
 			break;
 
 		case WL_RAND | WL_READ:
-			/*printk(KERN_INFO "ioswitch: random read");
-			break;*/
-
+			msg = messages[2];
 		case WL_RAND | WL_WRITE:
-			//printk(KERN_INFO "ioswitch: random write\n");
+			if (!msg)
+				msg = messages[3];
 #ifdef ELV_SWITCH
 			if (elv_switch(queue, "cfq") > 0)
 				printk(KERN_INFO "ioswitch: switch to cfq\n");
 #endif
-			break;
 		}
-		printk(KERN_INFO "ioswitch: read: cur = %lu, ave = %lu, peak = %lu; write: cur = %lu, ave = %lu, peak = %lu\n",
+		printk(KERN_INFO "ioswitch: %s; read: cur = %lu, ave = %lu, peak = %lu; write: cur = %lu, ave = %lu, peak = %lu\n", msg,
 				cur.req_sz[READ] >> FSHIFT, ave.req_sz[READ] >> FSHIFT, peak_req_sz[READ] >> FSHIFT,
 				cur.req_sz[WRITE] >> FSHIFT, ave.req_sz[WRITE] >> FSHIFT, peak_req_sz[WRITE] >> FSHIFT);
 	}
