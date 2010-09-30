@@ -158,7 +158,7 @@ static int threadfn(void *data)
 				msg = messages[1];
 #ifdef ELV_SWITCH
 			if (elv_switch(queue, "anticipatory") > 0)
-				printk(KERN_INFO "ioswitch: switch to anticipatory\n");
+				printk(KERN_INFO "ioswitch: %s workload, switch to anticipatory\n", msg);
 #endif
 			break;
 
@@ -169,10 +169,10 @@ static int threadfn(void *data)
 				msg = messages[3];
 #ifdef ELV_SWITCH
 			if (elv_switch(queue, "cfq") > 0)
-				printk(KERN_INFO "ioswitch: switch to cfq\n");
+				printk(KERN_INFO "ioswitch: %s workload, switch to cfq\n", msg);
 #endif
 		}
-		printk(KERN_INFO "ioswitch: %s; read: cur = %lu, ave = %lu, peak = %lu; write: cur = %lu, ave = %lu, peak = %lu\n", msg,
+		printk(KERN_INFO "ioswitch: workload = %s, read = %lu / %lu / %lu, write = %lu / %lu / %lu\n", msg,
 				cur.req_sz[READ] >> FSHIFT, ave.req_sz[READ] >> FSHIFT, peak_req_sz[READ] >> FSHIFT,
 				cur.req_sz[WRITE] >> FSHIFT, ave.req_sz[WRITE] >> FSHIFT, peak_req_sz[WRITE] >> FSHIFT);
 	}
