@@ -32,8 +32,8 @@ struct raw_stats {
 };
 
 struct ave_stats {
-	unsigned long req[2]; /* I/O requests */
-	unsigned long req_sz[2]; /* sectors/requests */
+	unsigned long req[2]; /* I/O requests as fixed-point */
+	unsigned long req_sz[2]; /* sectors/requests as fixed-point */
 };
 
 static struct task_struct *monitor = NULL;
