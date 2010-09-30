@@ -150,11 +150,11 @@ static int threadfn(void *data)
 
 		switch (workload) {
 		case WL_SEQ | WL_READ:
-			printk(KERN_INFO "ioswitch: sequential read\n");
-			break;
+			/*printk(KERN_INFO "ioswitch: sequential read\n");
+			break;*/
 
 		case WL_SEQ | WL_WRITE:
-			printk(KERN_INFO "ioswitch: sequential write\n");
+			//printk(KERN_INFO "ioswitch: sequential write\n");
 #ifdef ELV_SWITCH
 			if (elv_switch(queue, "anticipatory") > 0)
 				printk(KERN_INFO "ioswitch: switch to anticipatory\n");
@@ -162,11 +162,11 @@ static int threadfn(void *data)
 			break;
 
 		case WL_RAND | WL_READ:
-			printk(KERN_INFO "ioswitch: random read");
-			break;
+			/*printk(KERN_INFO "ioswitch: random read");
+			break;*/
 
 		case WL_RAND | WL_WRITE:
-			printk(KERN_INFO "ioswitch: random write\n");
+			//printk(KERN_INFO "ioswitch: random write\n");
 #ifdef ELV_SWITCH
 			if (elv_switch(queue, "cfq") > 0)
 				printk(KERN_INFO "ioswitch: switch to cfq\n");
