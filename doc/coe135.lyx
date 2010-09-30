@@ -80,7 +80,8 @@ cros/latex/contrib/IEEEtran/IEEEtran_HOWTO.pdf
 \begin_layout Title
 
 \size huge
-Workload-dependent Dynamic Disk I/O Scheduler Selection
+Workload-dependent Dynamic Disk I/O Scheduler Selection for Throughput Optimizat
+ion
 \end_layout
 
 \begin_layout Author
