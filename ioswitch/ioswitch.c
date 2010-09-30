@@ -40,14 +40,14 @@ static struct task_struct *monitor = NULL;
 
 /**
  * Get statistics for the interval. Note that the very first call to this
- * function would yield the "total" ave while succeeding calls would yield
- * an ave based on the cur and previous samples.
+ * function would yield the "total" average while succeeding calls would yield
+ * an average based on the current and previous samples.
  */
 static void get_stats(struct ave_stats *a, struct hd_struct *part)
 {
 	/* Storage for the samples */
 	static struct raw_stats data[2] = {{{0, 0}, {0, 0}}, {{0, 0}, {0, 0}}};
-	/* Pointers to the cur and previous samples, respectively */
+	/* Pointers to the current and previous samples, respectively */
 	static struct raw_stats *c = &data[0], *p = &data[1];
 
 	/* Read current stats for disk */
@@ -56,7 +56,7 @@ static void get_stats(struct ave_stats *a, struct hd_struct *part)
 	c->req[WRITE] = part_stat_read(part, ios[WRITE]);
 	c->sec[WRITE] = (unsigned long long)part_stat_read(part, sectors[WRITE]);
 
-	/* Get I/O requests for the interval */
+	/* Get average I/O requests for the interval */
 	a->req[READ] = c->req[READ] - p->req[READ];
 	a->req[WRITE] = c->req[WRITE] - p->req[WRITE];
 
@@ -93,45 +93,45 @@ static int threadfn(void *data)
 #ifdef ELV_SWITCH
 	struct request_queue *queue = bdev_get_queue(bdev);
 #endif
-	/* Current, average, and peak ave request sizes for reads and writes */
-	struct ave_stats cur, ave, peak_ave;
+	struct ave_stats cur, ave; /* Current and average stats data */
+	unsigned long peak_req_sz[2]; /* Peak average request size */
 	unsigned short workload, rw;
 
 	/*
-	 * Get the initial peak ave request size. This value will be equal to
+	 * Get the initial peak average request size. This value will be equal to
 	 * the total sectors accessed / total requests.
 	 */
-	get_stats(&peak_ave, part);
+	get_stats(&cur, part);
+	peak_req_sz[READ] = cur.req_sz[READ];
+	peak_req_sz[WRITE] = cur.req_sz[WRITE];
+
+	/* Get the initial average requests */
+	get_stats(&ave, part);
 
 	/*
-	 * Set the initial ave request size to be just below the decision point
-	 * so that CFQ would be selected as the initial scheduler.
+	 * Set the initial average request size to be just below the decision point
+	 * so that the workload would be classified as random.
 	 */
-	ave.req_sz[READ] = (PERCENT_SEQ * peak_ave.req_sz[READ]) / 101;
-	ave.req_sz[WRITE] = (PERCENT_SEQ * peak_ave.req_sz[WRITE]) / 101;
+	ave.req_sz[READ] = (PERCENT_SEQ * peak_req_sz[READ]) / 101;
+	ave.req_sz[WRITE] = (PERCENT_SEQ * peak_req_sz[WRITE]) / 101;
 
-	/* Get the ave requests for the cur interval */
-	get_stats(&cur, part);
-	ave.req[READ] = cur.req[READ];
-	ave.req[WRITE] = cur.req[WRITE];
-
+	/* Loop until kthread_stop() is called */
 	while (!kthread_should_stop()) {
-		/* Get the ave request size for the cur interval */
+		/* Get the average stats for the current interval */
 		get_stats(&cur, part);
 
-		/* Get the exponential moving ave for a 1-minute window */
+		/* Get the exponential moving average for a 1-minute window */
 		CALC_LOAD(ave.req[READ], EXP_1, cur.req[READ]);
 		CALC_LOAD(ave.req_sz[READ], EXP_1, cur.req_sz[READ]);
 		CALC_LOAD(ave.req[WRITE], EXP_1, cur.req[WRITE]);
 		CALC_LOAD(ave.req_sz[WRITE], EXP_1, cur.req_sz[WRITE]);
 
-		/* Check if we have a new peak read request size */
-		if (ave.req_sz[READ] > peak_ave.req_sz[READ])
-			peak_ave.req_sz[READ] = ave.req_sz[READ];
+		/* Check for new peak average request sizes */
+		if (ave.req_sz[READ] > peak_req_sz[READ])
+			peak_req_sz[READ] = ave.req_sz[READ];
 
-		/* Check if we have a new peak write request size */
-		if (ave.req_sz[WRITE] > peak_ave.req_sz[WRITE])
-			peak_ave.req_sz[WRITE] = ave.req_sz[WRITE];
+		if (ave.req_sz[WRITE] > peak_req_sz[WRITE])
+			peak_req_sz[WRITE] = ave.req_sz[WRITE];
 
 		/* Determine if workload is read or write */
 		if (ave.req[READ] > ave.req[WRITE]) {
@@ -143,7 +143,7 @@ static int threadfn(void *data)
 		}
 
 		/* Determine if workload is sequential or random */
-		if ((100 * ave.req_sz[rw]) / peak_ave.req_sz[rw] > PERCENT_SEQ)
+		if ((100 * ave.req_sz[rw]) / peak_req_sz[rw] > PERCENT_SEQ)
 			workload |= WL_SEQ;
 		else
 			workload |= WL_RAND;
@@ -155,12 +155,10 @@ static int threadfn(void *data)
 
 		case WL_SEQ | WL_WRITE:
 			printk(KERN_INFO "ioswitch: sequential write\n");
-/*
 #ifdef ELV_SWITCH
 			if (elv_switch(queue, "anticipatory") > 0)
 				printk(KERN_INFO "ioswitch: switch to anticipatory\n");
 #endif
-*/
 			break;
 
 		case WL_RAND | WL_READ:
@@ -169,16 +167,14 @@ static int threadfn(void *data)
 
 		case WL_RAND | WL_WRITE:
 			printk(KERN_INFO "ioswitch: random write\n");
-/*
 #ifdef ELV_SWITCH
 			if (elv_switch(queue, "cfq") > 0)
 				printk(KERN_INFO "ioswitch: switch to cfq\n");
 #endif
-*/
 		}
 		printk(KERN_INFO "ioswitch: read: cur = %lu, ave = %lu, peak = %lu; write: cur = %lu, ave = %lu, peak = %lu\n",
-				cur.req_sz[READ] >> FSHIFT, ave.req_sz[READ] >> FSHIFT, peak_ave.req_sz[READ] >> FSHIFT,
-				cur.req_sz[WRITE] >> FSHIFT, ave.req_sz[WRITE] >> FSHIFT, peak_ave.req_sz[WRITE] >> FSHIFT);
+				cur.req_sz[READ] >> FSHIFT, ave.req_sz[READ] >> FSHIFT, peak_req_sz[READ] >> FSHIFT,
+				cur.req_sz[WRITE] >> FSHIFT, ave.req_sz[WRITE] >> FSHIFT, peak_req_sz[WRITE] >> FSHIFT);
 		msleep_interruptible(SAMPLING_T);
 	}
 
