@@ -90,6 +90,16 @@ Jermaine Luis M.
  Alba, Thomas Neil P.
  Balauag, Darwin M.
  Bautista
+\begin_inset Newline newline
+\end_inset
+
+
+\emph on
+Electronics and Electrical Engineering Institute
+\begin_inset Newline newline
+\end_inset
+
+University of the Philippines Diliman
 \end_layout
 
 \begin_layout MarkBoth
@@ -481,10 +491,7 @@ Workload Characterization
 We define two types of workloads based on I/O access patterns.
  The I/O scheduler would be changed depending on the currently identified
  workload.
-\end_layout
-
-\begin_layout Standard
-The first type is the Sequential I/O workload.
+ The first type is the Sequential I/O workload.
  In Sequential I/O, the physical disks spend most of their time scanning
  a range of data clustered together in the same part of the disk.
  This type of access pattern results in high data transfer per I/O request.
@@ -586,16 +593,17 @@ number of sectors accessed
  As such, it can be readily used for this project's purposes.
  Also, for the statistics to be useful, minimal filesystem fragmentation
  is assumed.
- The remaining concern now is being able to draw a line between what is
- Sequential and what is Random based on the ratio of 
-\emph on
-sectors accessed
-\emph default
- to 
-\emph on
-I/O requests processed
-\emph default
-.
+\end_layout
+
+\begin_layout Subsection
+Sequential I/O Ratio
+\end_layout
+
+\begin_layout Standard
+We define Sequential I/O Ratio as the measure of how much of the I/O requests
+ is sequential in nature.
+ We defined that ratio as the point wherein the ioswitcher maintains resilience
+ against I/O bursts.
 \end_layout
 
 \begin_layout Subsection
@@ -605,11 +613,11 @@ Statistics Processing
 \begin_layout Standard
 We patterned the statistics processing with the CPU load computation of
  Linux.
- 
+ The 
 \family typewriter
-calc_load()
+CALC_LOAD()
 \family default
- function, which is used to calculate CPU load, employs exponential moving
+ macro, which is used to calculate CPU load, employs exponential moving
  average.
  The exponential moving average is a type of finite impulse response filter
  that applies weighting factor that decreases exponentially.
@@ -621,9 +629,11 @@ calc_load()
 In our implementation, we used a 1-minute time window so that the output
  of 
 \family typewriter
-calc_load()
+CALC_LOAD()
 \family default
  stays responsive yet resilient against I/O bursts.
+ Based on prior research, the 1-minute window is the optimum balance between
+ responsiveness and resilience to I/O bursts.
 \end_layout
 
 \begin_layout Subsection
@@ -657,6 +667,8 @@ EXPORT_SYMBOL()
 The scheduler switcher will be implemented as a kernel module.
  On load, it will spawn a kthread that would periodically look at the I/O
  statistics and determine the current workload.
+ In addition to being identified as Sequential or Random, the workload is
+ further categorized as being Read or Write.
  Once the current workload is determined, it would select the appropriate
  I/O scheduler, if needed.
  Based on related research, we have determined that the best I/O scheduler
