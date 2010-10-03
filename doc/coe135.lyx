@@ -1,4 +1,4 @@
-#LyX 1.6.7 created this file. For more info see http://www.lyx.org/
+#LyX 1.6.5 created this file. For more info see http://www.lyx.org/
 \lyxformat 345
 \begin_document
 \begin_header
@@ -65,7 +65,7 @@
 
 \begin_layout Standard
 \begin_inset Note Note
-status open
+status collapsed
 
 \begin_layout Plain Layout
 You find the IEEEtran document class documentation here: http://mirror.ctan.org/ma
@@ -143,7 +143,7 @@ status collapsed
 \emph default
 : Your Title
 \begin_inset Note Note
-status open
+status collapsed
 
 \begin_layout Plain Layout
 left side
@@ -159,12 +159,26 @@ right side
 \end_layout
 
 \begin_layout Abstract
-Since there is no I/O scheduler that can be optimal for all types of workload,
- changing the I/O scheduler to suite the current workload would yield better
- overall system performance.
- This study aims to implement a dynamically-tuned kernel that switches the
- I/O scheduler based on the current workload.
- The workloads are defined as Sequential I/O and Random I/O
+As processors continue to improve in performance, mass storage devices lag
+ behind significantly.
+ Access to mass storage devices is becoming the performance bottleneck of
+ the overall system performance.
+ Many I/O scheduling algorithms have been developed to remove or reduce
+ the bottleneck of disk accesses.
+ But there is no single I/O scheduling algorithm that would best serve all
+ types of workload.
+\end_layout
+
+\begin_layout Abstract
+This study aims to implement a dynamic I/O scheduler switcher that maximizes
+ throughput of disks by selecting the appropriate I/O scheduler for the
+ current workload.
+ The I/O scheduler switcher analyzes the current workload by computing for
+ the statistics of the disk.
+ It would then categorize the current workload to either of the four: random
+ read, random write, sequential read, sequential write.
+ And based on that, it would switch to the appropriate I/O scheduler that
+ maximizes the throughput of the disk.
 \end_layout
 
 \begin_layout Keywords
@@ -567,7 +581,11 @@ number of I/O requests processed
 \emph on
 read I/Os
 \emph default
- + 
+ 
+\shape italic
+and
+\shape default
+ 
 \emph on
 write I/Os
 \emph default
@@ -579,7 +597,11 @@ number of sectors accessed
 \emph on
 read sectors
 \emph default
- + 
+ 
+\shape italic
+and
+\shape default
+ 
 \emph on
 write sectors
 \emph default
@@ -688,32 +710,6 @@ key "key-4"
 \end_inset
 
 .
-\end_layout
-
-\begin_layout Section*
-Appendix A: Gantt Chart
-\end_layout
-
-\begin_layout Standard
-\begin_inset Float figure
-wide false
-sideways false
-status collapsed
-
-\begin_layout Plain Layout
-\align center
-\begin_inset Graphics
-	filename images/gantt-chart.png
-	scale 43
-
-\end_inset
-
-
-\end_layout
-
-\end_inset
-
-
 \end_layout
 
 \begin_layout Bibliography
