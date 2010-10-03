@@ -65,7 +65,7 @@
 
 \begin_layout Standard
 \begin_inset Note Note
-status open
+status collapsed
 
 \begin_layout Plain Layout
 You find the IEEEtran document class documentation here: http://mirror.ctan.org/ma
@@ -95,11 +95,8 @@ Jermaine Luis M.
 
 
 \emph on
-Electronics and Electrical Engineering Institute
-\begin_inset Newline newline
-\end_inset
-
-University of the Philippines Diliman
+Electronics and Electrical Engineering Institute, University of the Philippines
+ Diliman
 \end_layout
 
 \begin_layout MarkBoth
@@ -143,7 +140,7 @@ status collapsed
 \emph default
 : Your Title
 \begin_inset Note Note
-status open
+status collapsed
 
 \begin_layout Plain Layout
 left side
@@ -159,12 +156,26 @@ right side
 \end_layout
 
 \begin_layout Abstract
-Since there is no I/O scheduler that can be optimal for all types of workload,
- changing the I/O scheduler to suite the current workload would yield better
- overall system performance.
- This study aims to implement a dynamically-tuned kernel that switches the
- I/O scheduler based on the current workload.
- The workloads are defined as Sequential I/O and Random I/O
+As processors continue to improve in performance, mass storage devices lag
+ behind significantly.
+ Access to mass storage devices is becoming the performance bottleneck of
+ the overall system performance.
+ Many I/O scheduling algorithms have been developed to remove or reduce
+ the bottleneck of disk accesses.
+ But there is no single I/O scheduling algorithm that would best serve all
+ types of workload.
+\end_layout
+
+\begin_layout Abstract
+This study aims to implement a dynamic I/O scheduler switcher that maximizes
+ throughput of disks by selecting the appropriate I/O scheduler for the
+ current workload.
+ The I/O scheduler switcher analyzes the current workload by computing for
+ the statistics of the disk.
+ It would then categorize the current workload to either of the four: random
+ read, random write, sequential read, sequential write.
+ And based on that, it would switch to the appropriate I/O scheduler that
+ maximizes the throughput of the disk.
 \end_layout
 
 \begin_layout Keywords
@@ -479,6 +490,108 @@ Lastly, a test using IOZone was carried out.
  scheduler.
 \end_layout
 
+\begin_layout Subsection
+Self-Learning Disk Scheduling
+\end_layout
+
+\begin_layout Standard
+The self-learning scheduler characterizes I/O workloads by a number of essential
+ attributes, classifies them at runtime, and makes the best I/O scheduling
+ decision.
+ The goal of the self-learning scheduler is to have the maximum performance
+ (highest throughput or the shortest response time), to make a fast decision
+ on which I/O Scheduler to be applied (low overhead), to accurately classify
+ the current workload and to guarantee fairness to all processes
+\begin_inset CommandInset citation
+LatexCommand cite
+key "key-7"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+The self-learning scheduling scheme introduces a new type of intelligent
+ disk I/O schedulers, self-learning schedulers, which can learn about the
+ storage system, train themselves automatically, adapt to various types
+ of workloads, and make optimal scheduling decisions.
+ There are four self-learning scheduling schemes, namely, Change-sensing
+ Round-Robin, Feedback Learning, Per-request Learning, and Two-layer Learning.
+ 
+\end_layout
+
+\begin_layout Standard
+The Change-sensing Round-Robin algorithm invokes all schedulers in a round-robin
+ fashion for a short time.
+ Then it logs all performance data such as response time and throughput
+ into the log database (data gathering), compares the performance, and selects
+ the best scheduler.
+ However workloads and system configurations may change and frequent switching
+ of the scheduler may impose a high overhead, so the data must be gathered
+ only when a significant change of the workload is detected or when a significan
+tly deteriorated system performance is observed.
+\end_layout
+
+\begin_layout Standard
+The Feedback Learning Algorithm corrects errors in learning models and provides
+ better adaptivity.
+ If a new disk scheduling policy is activated and decreased performance
+ is continuously observed, the feedback mechanism can force the system to
+ switch back to the old disk scheduling policy and self-correct the classificati
+on and decision model.
+ Moreover all the performance data are logged into the database, a further
+ comprehensive analysis can be done with real-world data.
+ Therefore, the learning and selection model becomes more accurate.
+\end_layout
+
+\begin_layout Standard
+In Per-request Learning, the self-learning scheduler makes scheduling decisions
+ at the request level instead of the workload level.
+ The decision is based on the analysis of the individual request instead
+ of the workload.
+ They estimate the response time for each request in the waiting queue and
+ schedule the request with the shortest estimated response time.
+\end_layout
+
+\begin_layout Standard
+The Two-layer Learning algorithm combines workload-level and request-level
+ learning algorithms and employs feedback mechanisms.
+ One can implement a self learning core that consists of several regular
+ I/O schedulers and one self-learning scheduler, the Per-request Learning
+ Algorithm.
+ This incorporates Feedback Learning Algorithm and Per-request Learning
+ Algorithm into a two-layer self-learning scheduling scheme.
+\end_layout
+
+\begin_layout Standard
+Machine learning techniques are effectively used in self-learning disk scheduler
+s to automate the scheduling policy selection and optimization processes.
+ The self-learning scheduler automatically creates I/O performance models,
+ gathers system workload information, does both offline and online analysis,
+ and fits into the operating system kernel.
+ 
+\end_layout
+
+\begin_layout Standard
+In the performed experiments, they used the kernel I/O schedulers of Linux
+ 2.6.13 and feed the system with real-world and synthetic workloads to collect
+ performance data.
+ They also compare three configuration modes of the self-learning scheduler:
+ online, offline, and combined configurations.
+ They evaluate the performance and overhead for both real-world applications
+ and simulated scenarios.
+ The results show that the Two-layer Learning Scheme has the best performance
+\begin_inset CommandInset citation
+LatexCommand cite
+key "key-7"
+
+\end_inset
+
+.
+ 
+\end_layout
+
 \begin_layout Section
 Methodology
 \end_layout
@@ -567,7 +680,11 @@ number of I/O requests processed
 \emph on
 read I/Os
 \emph default
- + 
+ 
+\shape italic
+and
+\shape default
+ 
 \emph on
 write I/Os
 \emph default
@@ -579,7 +696,11 @@ number of sectors accessed
 \emph on
 read sectors
 \emph default
- + 
+ 
+\shape italic
+and
+\shape default
+ 
 \emph on
 write sectors
 \emph default
@@ -688,32 +809,6 @@ key "key-4"
 \end_inset
 
 .
-\end_layout
-
-\begin_layout Section*
-Appendix A: Gantt Chart
-\end_layout
-
-\begin_layout Standard
-\begin_inset Float figure
-wide false
-sideways false
-status collapsed
-
-\begin_layout Plain Layout
-\align center
-\begin_inset Graphics
-	filename images/gantt-chart.png
-	scale 43
-
-\end_inset
-
-
-\end_layout
-
-\end_inset
-
-
 \end_layout
 
 \begin_layout Bibliography
@@ -838,6 +933,31 @@ Interpreting iostat Output.
  Jul.
  6, 2010 [Sep.
  16, 2010].
+\end_layout
+
+\begin_layout Bibliography
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+label "7"
+key "key-7"
+
+\end_inset
+
+Yu Zhang and Bharat Bhargava.
+ 
+\begin_inset Quotes eld
+\end_inset
+
+Self-learning Disk Scheduling
+\begin_inset Quotes erd
+\end_inset
+
+, 
+\shape italic
+IEEE Transactions on Knowledge and Data Engineering
+\shape default
+, 2009, pp.
+ 50-65.
 \end_layout
 
 \begin_layout Standard
