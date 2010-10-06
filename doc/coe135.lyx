@@ -582,6 +582,7 @@ In the performed experiments, they used the kernel I/O schedulers of Linux
  They evaluate the performance and overhead for both real-world applications
  and simulated scenarios.
  The results show that the Two-layer Learning Scheme has the best performance
+ 
 \begin_inset CommandInset citation
 LatexCommand cite
 key "key-7"
@@ -602,14 +603,13 @@ Workload Characterization
 
 \begin_layout Standard
 We define two types of workloads based on I/O access patterns.
- The I/O scheduler would be changed depending on the currently identified
- workload.
  The first type is the Sequential I/O workload.
  In Sequential I/O, the physical disks spend most of their time scanning
  a range of data clustered together in the same part of the disk.
- This type of access pattern results in high data transfer per I/O request.
- The Sequential I/O workload is exhibited mainly by file servers, database
- servers, and streaming media servers 
+ This type of access pattern results in high data transfer per I/O request
+ (or request size).
+ The Sequential I/O workload is exhibited mainly by file servers and streaming
+ media servers 
 \begin_inset CommandInset citation
 LatexCommand cite
 key "key-3"
@@ -624,10 +624,10 @@ The other type is the Random I/O workload.
  In this type of workload, the physical disks spend a measurable percentage
  of time seeking data from various different parts of the disk for read
  or write purposes.
- Thus, this type of access pattern results in relatively lower data transfer
- per I/O request, compared to Sequential I/O.
- Random I/O workload is often displayed by web servers, and mail servers
- 
+ Thus, this type of access pattern results in relatively smaller request
+ sizes, compared to Sequential I/O.
+ Random I/O workload is often displayed by database servers, web servers,
+ and mail servers 
 \begin_inset CommandInset citation
 LatexCommand cite
 key "key-3"
@@ -637,6 +637,57 @@ key "key-3"
 .
  Since desktop workstations tend to be used for various tasks, desktop workload
  can be considered as either Sequential or Random.
+\end_layout
+
+\begin_layout Standard
+Since I/O can never be purely sequential or random for any given time, we
+ define 
+\emph on
+Sequential I/O Ratio (SR)
+\emph default
+ as the measure of how much of the I/O requests is sequential in nature.
+ The SR can be obtained by getting the ratio of the 
+\emph on
+average request size
+\emph default
+ to the 
+\emph on
+peak average request size
+\emph default
+.
+ A purely random I/O would have an SR close to zero.
+ On the other hand, a purely sequential I/O would have an SR equal to one.
+ Since disks vary from one system to another, we consider the I/O pattern
+ which exhibits the highest average request size (peak average request size)
+ to be the 
+\emph on
+purely sequential
+\emph default
+ I/O (SR = 1) for a particular system.
+\end_layout
+
+\begin_layout Standard
+The SR will be used for determining whether an I/O pattern is sequential
+ or random.
+ That is, if the SR is lower than a specified value, say 0.75, then the I/O
+ pattern will be considered random.
+ Otherwise, if the SR is greater than or equal to that value, the I/O pattern
+ will be considered sequential.
+ We call that value the 
+\emph on
+decision point
+\emph default
+.
+ Based on our tests, a lower decision point results in a more responsive
+ decision-making, albeit susceptible to I/O bursts.
+ On the other hand, a higher decision point results in a slightly less responsiv
+e decision-making while being resilient to I/O bursts.
+ For our purposes, we used a decision point of 0.75 to provide a good balance
+ between responsiveness and I/O burst resilience.
+\end_layout
+
+\begin_layout Subsection
+Block Layer Statistics
 \end_layout
 
 \begin_layout Standard
@@ -658,20 +709,50 @@ read I/Os
 \emph default
 , 
 \emph on
-read sectors
+read merges, read sectors
 \emph default
 , 
 \emph on
-write I/Os
+read ticks, write I/Os
 \emph default
 , 
 \emph on
-write sectors
+write merges, write sectors
 \emph default
-, and other statistics .
- As stated earlier, the two workloads, Sequential I/O and Random I/O, can
- be differentiated from each other by looking at the ratio of data transferred
- to the number of I/O requests.
+, 
+\emph on
+write ticks
+\emph default
+, 
+\emph on
+in_flight
+\emph default
+, 
+\emph on
+io_ticks
+\emph default
+ and 
+\emph on
+time_in_queue
+\emph default
+.
+\end_layout
+
+\begin_layout Standard
+As stated earlier, the two workloads, Sequential I/O and Random I/O, can
+ be differentiated from each other by looking at the 
+\emph on
+I/O request size
+\emph default
+ (ratio of 
+\emph on
+data transferred
+\emph default
+ to the 
+\emph on
+number of I/O requests
+\emph default
+).
  Thus, the statistics on the 
 \emph on
 number of I/O requests processed
@@ -714,47 +795,6 @@ number of sectors accessed
  As such, it can be readily used for this project's purposes.
  Also, for the statistics to be useful, minimal filesystem fragmentation
  is assumed.
-\end_layout
-
-\begin_layout Subsection
-Sequential I/O Ratio
-\end_layout
-
-\begin_layout Standard
-We define Sequential I/O Ratio as the measure of how much of the I/O requests
- is sequential in nature.
- We defined that ratio as the point wherein the ioswitcher maintains resilience
- against I/O bursts.
-\end_layout
-
-\begin_layout Subsection
-Statistics Processing
-\end_layout
-
-\begin_layout Standard
-We patterned the statistics processing with the CPU load computation of
- Linux.
- The 
-\family typewriter
-CALC_LOAD()
-\family default
- macro, which is used to calculate CPU load, employs exponential moving
- average.
- The exponential moving average is a type of finite impulse response filter
- that applies weighting factor that decreases exponentially.
- The weighting for each older data point decreases exponentially, never
- reaching zero.
-\end_layout
-
-\begin_layout Standard
-In our implementation, we used a 1-minute time window so that the output
- of 
-\family typewriter
-CALC_LOAD()
-\family default
- stays responsive yet resilient against I/O bursts.
- Based on prior research, the 1-minute window is the optimum balance between
- responsiveness and resilience to I/O bursts.
 \end_layout
 
 \begin_layout Subsection
@@ -809,6 +849,32 @@ key "key-4"
 \end_inset
 
 .
+\end_layout
+
+\begin_layout Standard
+We patterned the statistics processing with the CPU load computation of
+ Linux.
+ The 
+\family typewriter
+CALC_LOAD()
+\family default
+ macro, which is used to calculate CPU load, employs exponential moving
+ average.
+ The exponential moving average is a type of finite impulse response filter
+ that applies weighting factor that decreases exponentially.
+ The weighting for each older data point decreases exponentially, never
+ reaching zero.
+\end_layout
+
+\begin_layout Standard
+In our implementation, we used a 1-minute time window so that the output
+ of 
+\family typewriter
+CALC_LOAD()
+\family default
+ stays responsive yet resilient against I/O bursts.
+ Based on prior research, the 1-minute window is the optimum balance between
+ responsiveness and resilience to I/O bursts.
 \end_layout
 
 \begin_layout Bibliography
@@ -881,8 +947,9 @@ key "key-4"
 
 S.
  Pratt and D.
- Heger, “Workload Dependent Performance Evaluation of the Linux 2.6 I/O Scheduler
-s,” in 
+ Heger.
+ “Workload Dependent Performance Evaluation of the Linux 2.6 I/O Schedulers,”
+ in 
 \shape italic
 Proc.
  Ottawa Linux Symposium
@@ -902,8 +969,9 @@ D.
  L.
  Martens and M.
  J.
- Katchabaw, “Optimizing System Performance through Dynamic Disk Scheduling
- Algorithm Selection,” in 
+ Katchabaw.
+ “Optimizing System Performance through Dynamic Disk Scheduling Algorithm
+ Selection,” in 
 \shape italic
 Proc.
  WSEAS Trans.
@@ -943,18 +1011,21 @@ key "key-7"
 
 \end_inset
 
-Yu Zhang and Bharat Bhargava.
+Y.
+ Zhang and B.
+ Bhargava.
  
 \begin_inset Quotes eld
 \end_inset
 
-Self-learning Disk Scheduling
+Self-learning Disk Scheduling,
 \begin_inset Quotes erd
 \end_inset
 
-, 
+ in 
 \shape italic
-IEEE Transactions on Knowledge and Data Engineering
+Proc.
+ IEEE Transactions on Knowledge and Data Engineering
 \shape default
 , 2009, pp.
  50-65.
