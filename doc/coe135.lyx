@@ -798,13 +798,15 @@ number of sectors accessed
 \end_layout
 
 \begin_layout Subsection
-I/O Scheduler Switcher
+I/O Scheduler Switcher Module
 \end_layout
 
 \begin_layout Standard
-To minimize the in-kernel changes and ease development, the stock Ubuntu
- 2.6.32 kernel was modified.
- We created a new function, 
+To minimize the in-kernel changes and to ease development, the scheduler
+ switcher was implemented as a kernel module.
+ To be able to switch I/O schedulers from within the kernel module, the
+ stock Ubuntu 2.6.32 kernel was slightly modified.
+ We added a new function, 
 \family typewriter
 elv_switch()
 \family default
@@ -812,42 +814,15 @@ elv_switch()
 \family typewriter
 elv_iosched_store()
 \family default
-, for changing the I/O scheduler.
- This function is 
-\emph on
-exported
-\emph default
- using 
+, to 
+\family typewriter
+block/elevator.c
+\family default
+ for changing the I/O scheduler.
+ This function is made available for use in kernel modules using 
 \family typewriter
 EXPORT_SYMBOL()
 \family default
- so that it can be used in kernel modules.
-\end_layout
-
-\begin_layout Standard
-The scheduler switcher will be implemented as a kernel module.
- On load, it will spawn a kthread that would periodically look at the I/O
- statistics and determine the current workload.
- In addition to being identified as Sequential or Random, the workload is
- further categorized as being Read or Write.
- Once the current workload is determined, it would select the appropriate
- I/O scheduler, if needed.
- Based on related research, we have determined that the best I/O scheduler
- for Sequential I/O is 
-\emph on
-Anticipatory
-\emph default
- while the best for Random I/O is 
-\emph on
-CFQ
-\emph default
- for single-disk systems 
-\begin_inset CommandInset citation
-LatexCommand cite
-key "key-4"
-
-\end_inset
-
 .
 \end_layout
 
@@ -873,8 +848,82 @@ In our implementation, we used a 1-minute time window so that the output
 CALC_LOAD()
 \family default
  stays responsive yet resilient against I/O bursts.
- Based on prior research, the 1-minute window is the optimum balance between
- responsiveness and resilience to I/O bursts.
+ Based on prior research 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "key-7"
+
+\end_inset
+
+, the 1-minute window is the optimum balance between responsiveness and
+ resilience to I/O bursts.
+\end_layout
+
+\begin_layout Standard
+On module load, the switcher spawns a kthread that would look at the I/O
+ statistics periodically, depending on the specified sampling period at
+ compile-time (currently 15 seconds).
+ The workload is first categorized as either being 
+\emph on
+Read
+\emph default
+ or 
+\emph on
+Write
+\emph default
+.
+ Once the dominant operation is determined, i.e.
+ either Read or Write, the switcher then computes for the 
+\emph on
+current request size
+\emph default
+ based on the dominant operation's statistics.
+ The 
+\emph on
+average request size
+\emph default
+ (1-minute window) is then computed using the current request size.
+ Then, the SR is computed using the average request size and the 
+\emph on
+peak average request size
+\emph default
+.
+ Finally, the workload is determined by comparing the SR to the decision
+ point, which is specified at compile-time (currently 0.75).
+ Once the current workload is determined, it would then select the appropriate
+ I/O scheduler.
+ Based on related research 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "key-4"
+
+\end_inset
+
+, we have determined that the best I/O scheduler for Sequential I/O is 
+\emph on
+Anticipatory
+\emph default
+ while the best for Random I/O is 
+\emph on
+CFQ
+\emph default
+ for single-disk systems.
+\end_layout
+
+\begin_layout Section
+Results and Analysis
+\end_layout
+
+\begin_layout Standard
+Results here.
+\end_layout
+
+\begin_layout Section
+Conlusions and Recommendations
+\end_layout
+
+\begin_layout Standard
+Conclusions here.
 \end_layout
 
 \begin_layout Bibliography
