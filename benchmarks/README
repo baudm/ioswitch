@@ -1,4 +1,21 @@
 These benchmarks require fio (see http://www.linux.com/archive/feature/131063)
+
 The usage is as follows:
 
 $ ./run.sh <benchmark>.fio
+
+----------------
+
+For benchmarking the stock schedulers, create a folder named "log" and start benchmark.sh using sudo.
+
+$ mkdir log
+$ sudo ./benchmark.sh
+
+fio files to be used are:
+
+rand-read.fio
+rand-write.fio
+seq-read.fio
+seq-write.fio
+
+These files should have the same configuration except for the direction and nature of the I/O (randread, randwrite, read, write).
