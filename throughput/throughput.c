@@ -13,7 +13,7 @@
 #include <linux/delay.h>
 
 #define DEV_PATH	"/dev/sda"
-#define SAMPLING_T	15000	/* 15-sec sampling period */
+#define SAMPLING_T	5000	/* 5-sec sampling period */
 
 struct raw_stats {
 	unsigned long long sec[2]; /* sectors */
@@ -65,7 +65,8 @@ static int threadfn(void *data)
 		get_stats(&cur, part);
 
 		printk(KERN_INFO "TMM: BWr=%llu BWw=%llu",
-				cur.sec[READ]/15, cur.sec[WRITE]/15);
+				cur.sec[READ]*1000/SAMPLING_T,
+				cur.sec[WRITE]*1000/SAMPLING_T);
 
 	}
 
