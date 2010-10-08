@@ -40,7 +40,7 @@
 \pdf_backref false
 \pdf_pdfusetitle false
 \pdf_quoted_options "pdfpagelayout=OneColumn, pdfnewwindow=true, pdfstartview=XYZ, plainpages=false"
-\papersize default
+\papersize a4paper
 \use_geometry false
 \use_amsmath 0
 \use_esint 0
@@ -85,11 +85,11 @@ ion
 \end_layout
 
 \begin_layout Author
-Jermaine Luis M.
+Darwin M.
+ Bautista, Jermaine Luis M.
  Agnasin, Mark Earvin V.
  Alba, Thomas Neil P.
- Balauag, Darwin M.
- Bautista
+ Balauag
 \begin_inset Newline newline
 \end_inset
 
@@ -157,17 +157,8 @@ right side
 
 \begin_layout Abstract
 As processors continue to improve in performance, mass storage devices lag
- behind significantly.
- Access to mass storage devices is becoming the performance bottleneck of
- the overall system performance.
- Many I/O scheduling algorithms have been developed to remove or reduce
- the bottleneck of disk accesses.
- But there is no single I/O scheduling algorithm that would best serve all
- types of workload.
-\end_layout
-
-\begin_layout Abstract
-This study aims to implement a dynamic I/O scheduler switcher that maximizes
+ behind, becoming the performance bottleneck of the overall system performance.
+ This study aims to implement a dynamic I/O scheduler switcher that maximizes
  throughput of disks by selecting the appropriate I/O scheduler for the
  current workload.
  The I/O scheduler switcher analyzes the current workload by computing for
@@ -176,6 +167,12 @@ This study aims to implement a dynamic I/O scheduler switcher that maximizes
  read, random write, sequential read, sequential write.
  And based on that, it would switch to the appropriate I/O scheduler that
  maximizes the throughput of the disk.
+ Generally, the I/O scheduler switcher has achieved in total a better performanc
+e compared to the other schedulers in all of the workloads.
+ The I/O scheduler switcher has a balanced throughput throughout the workloads
+ tested upon it.
+ As compared to other schedulers, all of them performed poorly at some point
+ in the workload tested upon them.
 \end_layout
 
 \begin_layout Keywords
@@ -346,7 +343,7 @@ The main criteria for this proposed selection is bounded latency and maximum
 \begin_inset Float figure
 wide false
 sideways false
-status open
+status collapsed
 
 \begin_layout Plain Layout
 \align center
@@ -798,13 +795,15 @@ number of sectors accessed
 \end_layout
 
 \begin_layout Subsection
-I/O Scheduler Switcher
+I/O Scheduler Switcher Module
 \end_layout
 
 \begin_layout Standard
-To minimize the in-kernel changes and ease development, the stock Ubuntu
- 2.6.32 kernel was modified.
- We created a new function, 
+To minimize the in-kernel changes and to ease development, the scheduler
+ switcher was implemented as a kernel module.
+ To be able to switch I/O schedulers from within the kernel module, the
+ stock Ubuntu 2.6.32 kernel was slightly modified.
+ We added a new function, 
 \family typewriter
 elv_switch()
 \family default
@@ -812,42 +811,15 @@ elv_switch()
 \family typewriter
 elv_iosched_store()
 \family default
-, for changing the I/O scheduler.
- This function is 
-\emph on
-exported
-\emph default
- using 
+, to 
+\family typewriter
+block/elevator.c
+\family default
+ for changing the I/O scheduler.
+ This function is made available for use in kernel modules using 
 \family typewriter
 EXPORT_SYMBOL()
 \family default
- so that it can be used in kernel modules.
-\end_layout
-
-\begin_layout Standard
-The scheduler switcher will be implemented as a kernel module.
- On load, it will spawn a kthread that would periodically look at the I/O
- statistics and determine the current workload.
- In addition to being identified as Sequential or Random, the workload is
- further categorized as being Read or Write.
- Once the current workload is determined, it would select the appropriate
- I/O scheduler, if needed.
- Based on related research, we have determined that the best I/O scheduler
- for Sequential I/O is 
-\emph on
-Anticipatory
-\emph default
- while the best for Random I/O is 
-\emph on
-CFQ
-\emph default
- for single-disk systems 
-\begin_inset CommandInset citation
-LatexCommand cite
-key "key-4"
-
-\end_inset
-
 .
 \end_layout
 
@@ -873,8 +845,66 @@ In our implementation, we used a 1-minute time window so that the output
 CALC_LOAD()
 \family default
  stays responsive yet resilient against I/O bursts.
- Based on prior research, the 1-minute window is the optimum balance between
- responsiveness and resilience to I/O bursts.
+ Based on prior research 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "key-7"
+
+\end_inset
+
+, the 1-minute window is the optimum balance between responsiveness and
+ resilience to I/O bursts.
+\end_layout
+
+\begin_layout Standard
+On module load, the switcher spawns a kthread that would look at the I/O
+ statistics periodically, depending on the specified sampling period at
+ compile-time (currently 15 seconds).
+ The workload is first categorized as either being 
+\emph on
+Read
+\emph default
+ or 
+\emph on
+Write
+\emph default
+.
+ Once the dominant operation is determined, i.e.
+ either Read or Write, the switcher then computes for the 
+\emph on
+current request size
+\emph default
+ based on the dominant operation's statistics.
+ The 
+\emph on
+average request size
+\emph default
+ (1-minute window) is then computed using the current request size.
+ Then, the SR is computed using the average request size and the 
+\emph on
+peak average request size
+\emph default
+.
+ Finally, the workload is determined by comparing the SR to the decision
+ point, which is specified at compile-time (currently 0.75).
+ Once the current workload is determined, it would then select the appropriate
+ I/O scheduler.
+ Based on related research 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "key-4"
+
+\end_inset
+
+, we have determined that the best I/O scheduler for Sequential I/O is 
+\emph on
+Anticipatory
+\emph default
+ while the best for Random I/O is 
+\emph on
+CFQ
+\emph default
+ for single-disk systems.
 \end_layout
 
 \begin_layout Section
@@ -882,7 +912,9 @@ Results and Analysis
 \end_layout
 
 \begin_layout Standard
-We devised a module that prints in 
+We conducted all our experiments on an Intel Core i5 650 (dual-core processor
+ 3.20GHz) with 500GB 7200 rpm Western Digital hard disk.
+ We devised a module that prints in 
 \series bold
 /var/log/messages
 \series default
@@ -893,26 +925,14 @@ We devised a module that prints in
 \end_layout
 
 \begin_layout Standard
-With the module described above, we conducted a series of test using the
- fio benchmarking tool 
-\begin_inset CommandInset citation
-LatexCommand cite
-key "key-8"
-
-\end_inset
-
-.
- The test is composed of six fio files namely: file-server.fio, oltp.fio,
- rand-read.fio, rand-write.fio, seq-read.fio and seq-write.fio.
- These fio files determine the workloads we tested our system with.
- These six workloads were run successively and repeated five times.
- The average of the five runs at a sampling period of 5 seconds are shown
- below.
-\end_layout
-
-\begin_layout Standard
 \begin_inset Float figure
-placement H
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Float figure
 wide false
 sideways false
 status collapsed
@@ -932,7 +952,7 @@ status collapsed
 \begin_inset Caption
 
 \begin_layout Plain Layout
-File-Server Workload - Read-Statistics
+Read Statistics
 \end_layout
 
 \end_inset
@@ -947,11 +967,11 @@ File-Server Workload - Read-Statistics
 \end_inset
 
 
-\end_layout
+\begin_inset Newline newline
+\end_inset
 
-\begin_layout Standard
+
 \begin_inset Float figure
-placement H
 wide false
 sideways false
 status collapsed
@@ -971,7 +991,7 @@ status collapsed
 \begin_inset Caption
 
 \begin_layout Plain Layout
-File-Server Workload - Write-Statistics
+Write Statistics
 \end_layout
 
 \end_inset
@@ -988,9 +1008,32 @@ File-Server Workload - Write-Statistics
 
 \end_layout
 
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+File Server Workload
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
 \begin_layout Standard
 \begin_inset Float figure
-placement H
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Float figure
 wide false
 sideways false
 status collapsed
@@ -1010,7 +1053,7 @@ status collapsed
 \begin_inset Caption
 
 \begin_layout Plain Layout
-OLTP Workload - Read-Statistics
+Read Statistics
 \end_layout
 
 \end_inset
@@ -1025,11 +1068,11 @@ OLTP Workload - Read-Statistics
 \end_inset
 
 
-\end_layout
+\begin_inset Newline newline
+\end_inset
 
-\begin_layout Standard
+
 \begin_inset Float figure
-placement H
 wide false
 sideways false
 status collapsed
@@ -1049,7 +1092,7 @@ status collapsed
 \begin_inset Caption
 
 \begin_layout Plain Layout
-OLTP Workload - Write-Statistics
+Write Statistics
 \end_layout
 
 \end_inset
@@ -1066,9 +1109,93 @@ OLTP Workload - Write-Statistics
 
 \end_layout
 
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+OLTP Workload
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+With the module described above, we conducted a series of test using the
+ fio benchmarking tool 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "key-8"
+
+\end_inset
+
+.
+ The test is composed of six fio files namely: 
+\emph on
+file-server.fio
+\emph default
+, 
+\emph on
+oltp.fio
+\emph default
+, 
+\emph on
+rand-read.fio
+\emph default
+, 
+\emph on
+rand-write.fio
+\emph default
+, 
+\emph on
+seq-read.fio
+\emph default
+ and 
+\emph on
+seq-write.fio
+\emph default
+.
+ These fio files determine the workloads we tested our system with.
+ These six workloads were run successively and repeated five times.
+ The average of the five runs at a sampling period of 5 seconds are shown
+ in Figures 3 to 8.
+ We presented the data for each workload in separate plots due to horizontal
+ space restrictions.
+\end_layout
+
+\begin_layout Standard
+As seen in the graphs, the I/O scheduler switcher has achieved in total
+ a better performance compared to the other schedulers in all of the workloads.
+ The I/O scheduler switcher has a balanced throughput throughout the workloads
+ tested upon it.
+ As compared to other schedulers, all of them performed poorly at some point
+ in the workload tested upon them.
+\end_layout
+
+\begin_layout Standard
+Also, we can see that the I/O scheduler switcher follows the form of the
+ better scheduler between the Anticipatory Scheduler and the CFQ Scheduler
+ during a certain workload.
+ This only proves that the I/O scheduler switcher successfully mimicked
+ the better of the two depending on the workload.
+\end_layout
+
 \begin_layout Standard
 \begin_inset Float figure
-placement H
+placement p
+wide true
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Float figure
 wide false
 sideways false
 status collapsed
@@ -1088,7 +1215,7 @@ status collapsed
 \begin_inset Caption
 
 \begin_layout Plain Layout
-Random-Read Workload - Read-Statistics
+Read Statistics
 \end_layout
 
 \end_inset
@@ -1103,11 +1230,7 @@ Random-Read Workload - Read-Statistics
 \end_inset
 
 
-\end_layout
-
-\begin_layout Standard
 \begin_inset Float figure
-placement H
 wide false
 sideways false
 status collapsed
@@ -1127,7 +1250,7 @@ status collapsed
 \begin_inset Caption
 
 \begin_layout Plain Layout
-Random-Read Workload - Write-Statistics
+Write Statistics
 \end_layout
 
 \end_inset
@@ -1144,9 +1267,33 @@ Random-Read Workload - Write-Statistics
 
 \end_layout
 
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Random Read Workload
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
 \begin_layout Standard
 \begin_inset Float figure
-placement H
+placement p
+wide true
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Float figure
 wide false
 sideways false
 status collapsed
@@ -1166,7 +1313,7 @@ status collapsed
 \begin_inset Caption
 
 \begin_layout Plain Layout
-Random-Write Workload - Read-Statistics
+Read Statistics
 \end_layout
 
 \end_inset
@@ -1174,18 +1321,10 @@ Random-Write Workload - Read-Statistics
 
 \end_layout
 
-\begin_layout Plain Layout
-
-\end_layout
-
 \end_inset
 
 
-\end_layout
-
-\begin_layout Standard
 \begin_inset Float figure
-placement H
 wide false
 sideways false
 status collapsed
@@ -1205,7 +1344,7 @@ status collapsed
 \begin_inset Caption
 
 \begin_layout Plain Layout
-Random-Write Workload - Write Statistics
+Write Statistics
 \end_layout
 
 \end_inset
@@ -1222,9 +1361,33 @@ Random-Write Workload - Write Statistics
 
 \end_layout
 
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Random Write Workload
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
 \begin_layout Standard
 \begin_inset Float figure
-placement H
+placement p
+wide true
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Float figure
 wide false
 sideways false
 status collapsed
@@ -1244,7 +1407,7 @@ status collapsed
 \begin_inset Caption
 
 \begin_layout Plain Layout
-Sequential-Read Workload - Read-Statistics
+Read Statistics
 \end_layout
 
 \end_inset
@@ -1259,11 +1422,7 @@ Sequential-Read Workload - Read-Statistics
 \end_inset
 
 
-\end_layout
-
-\begin_layout Standard
 \begin_inset Float figure
-placement H
 wide false
 sideways false
 status collapsed
@@ -1283,7 +1442,7 @@ status collapsed
 \begin_inset Caption
 
 \begin_layout Plain Layout
-Sequential-Read Workload - Write-Statistics
+Write Statistics
 \end_layout
 
 \end_inset
@@ -1300,9 +1459,33 @@ Sequential-Read Workload - Write-Statistics
 
 \end_layout
 
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Sequential Read Workload
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
 \begin_layout Standard
 \begin_inset Float figure
 placement H
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Float figure
 wide false
 sideways false
 status collapsed
@@ -1322,7 +1505,7 @@ status collapsed
 \begin_inset Caption
 
 \begin_layout Plain Layout
-Sequential-Write Workload - Read Statistics
+Read Statistics
 \end_layout
 
 \end_inset
@@ -1330,18 +1513,14 @@ Sequential-Write Workload - Read Statistics
 
 \end_layout
 
-\begin_layout Plain Layout
-
-\end_layout
-
 \end_inset
 
 
-\end_layout
+\begin_inset Newline newline
+\end_inset
 
-\begin_layout Standard
+
 \begin_inset Float figure
-placement H
 wide false
 sideways false
 status collapsed
@@ -1361,7 +1540,7 @@ status collapsed
 \begin_inset Caption
 
 \begin_layout Plain Layout
-Sequential-Write Workload - Write-Statistics
+Write Statistics
 \end_layout
 
 \end_inset
@@ -1378,26 +1557,25 @@ Sequential-Write Workload - Write-Statistics
 
 \end_layout
 
-\begin_layout Standard
-As seen in the graphs above, the I/O scheduler switcher has achieved in
- total a better performance compared to the other schedulers in all of the
- workloads.
- The I/O scheduler switcher has a balanced throughput throughout the workloads
- tested upon it.
- As compared to other schedulers, all of them performed poorly at some point
- in the workload tested upon them.
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Sequential Write Workload
 \end_layout
 
-\begin_layout Standard
-Also, we can see that the I/O scheduler switcher follows the form of the
- better scheduler between the Anticipatory Scheduler and the CFQ Scheduler
- during a certain workload.
- This only proves that the I/O scheduler switcher successfully mimicked
- the better of the two depending on the workload.
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Section
-Conclusion
+Conclusions and Recommendations
 \end_layout
 
 \begin_layout Standard
@@ -1416,6 +1594,29 @@ Our focus was to maximize the throughput of the disk.
  in nature, and to CFQ, otherwise.
  Based on the results above, the dynamic disk I/O scheduler was able to
  achieve a better performance throughout the workloads tested upon it.
+\end_layout
+
+\begin_layout Standard
+Further experimentation is necessary to determine the best scheduling algorithm
+ for a specific workload.
+ Validation of the previous paper 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "key-4"
+
+\end_inset
+
+ should be done to justify the use of certain scheduling algorithm for a
+ specific workload.
+ This will result to a more reliable selection of the scheduling algorithms,
+ capable of delivering improved performance.
+\end_layout
+
+\begin_layout Standard
+For improved overall performance, fine tuning of scheduling algorithm should
+ be sought after.
+ In our I/O scheduler switcher, we used default parameters for the schedulers
+ used, resulting to suboptimal performance compared to finely tuned schedulers.
 \end_layout
 
 \begin_layout Bibliography
@@ -1590,7 +1791,8 @@ Inspecting disk IO performance with fio.
 \begin_inset Quotes erd
 \end_inset
 
- Internet: http://www.linux.com/archive/feature/131063
+ Internet: http://www.linux.com/archive/feature/131063, Apr.
+ 9, 2008 [Oct 8, 2010].
 \end_layout
 
 \begin_layout Standard
